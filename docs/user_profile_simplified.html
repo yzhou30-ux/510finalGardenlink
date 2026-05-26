@@ -1,0 +1,123 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.pp{width:100%;max-width:420px;margin:0 auto;background:#F5F0E8;border-radius:var(--border-radius-lg);font-family:-apple-system,'PingFang SC',sans-serif;overflow:hidden}
+.pp-top{padding:16px 20px 0;position:relative}
+.pp-back{position:absolute;top:16px;left:16px;width:32px;height:32px;border-radius:50%;background:rgba(253,251,247,0.7);display:flex;align-items:center;justify-content:center;cursor:pointer;color:#6B7B6A;font-size:16px;border:0.5px solid rgba(200,209,198,0.4)}
+.pp-hero{display:flex;flex-direction:column;align-items:center;padding:8px 0 14px}
+.pp-ava{width:80px;height:80px;border-radius:50%;background:rgba(253,251,247,0.9);border:2px solid rgba(200,209,198,0.5);display:flex;align-items:center;justify-content:center;font-size:38px;margin-bottom:10px}
+.pp-name{font-size:18px;font-weight:500;color:#3D4F3C}
+.pp-bio{font-size:12px;color:#8B9E89;margin-top:3px;text-align:center;max-width:260px;line-height:1.4}
+.pp-acts{display:flex;gap:8px;padding:12px 20px 0;justify-content:center}
+.pp-btn{flex:1;max-width:140px;padding:8px 0;text-align:center;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;transition:all 0.2s}
+.pp-btn.pri{background:rgba(74,93,73,0.12);color:#3D4F3C;border:0.5px solid rgba(74,93,73,0.2)}
+.pp-btn.pri:hover{background:rgba(74,93,73,0.18)}
+.pp-btn.sec{background:transparent;color:#6B7B6A;border:0.5px solid rgba(74,93,73,0.12)}
+.pp-btn.sec:hover{background:rgba(74,93,73,0.04)}
+.pp-pots{padding:16px 20px 6px}
+.pp-pots-t{font-size:13px;font-weight:500;color:#3D4F3C;margin-bottom:10px}
+.pp-pots-t i{font-size:14px;vertical-align:-1px;margin-right:3px}
+.pp-pots-row{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch}
+.pp-pots-row::-webkit-scrollbar{display:none}
+.pp-pot{display:flex;flex-direction:column;align-items:center;flex-shrink:0;cursor:pointer}
+.pp-pot-c{width:56px;height:56px;border-radius:50%;background:rgba(253,251,247,0.85);border:0.5px solid rgba(200,209,198,0.4);display:flex;align-items:center;justify-content:center;font-size:24px;transition:transform 0.2s}
+.pp-pot:hover .pp-pot-c{transform:scale(1.05)}
+.pp-pot-n{font-size:9px;color:#6B7B6A;margin-top:4px;max-width:56px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pp-pot-d{font-size:8px;color:#9B9484}
+.pp-sep{height:0.5px;background:rgba(74,93,73,0.08);margin:6px 20px 0}
+.pp-feed{padding:0 0 20px}
+.pp-feed-head{padding:12px 20px 10px;font-size:13px;font-weight:500;color:#3D4F3C;border-bottom:0.5px solid rgba(74,93,73,0.08)}
+.pp-feed-head i{font-size:14px;vertical-align:-1px;margin-right:3px}
+.post{padding:16px 20px;border-bottom:0.5px solid rgba(74,93,73,0.06)}
+.post-date{font-size:11px;color:#8B9E89;margin-bottom:8px;display:flex;align-items:center;gap:4px}
+.post-date i{font-size:13px}
+.post-img{width:100%;aspect-ratio:4/3;border-radius:10px;background:rgba(74,93,73,0.05);margin-bottom:10px;display:flex;align-items:center;justify-content:center;font-size:40px;color:#8B9E89}
+.post-text{font-size:13px;color:#4A5D49;line-height:1.5;margin-bottom:8px}
+.post-tags{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
+.post-tag{font-size:9px;padding:2px 8px;border-radius:10px;background:rgba(74,93,73,0.06);color:#6B7B6A}
+.post-act{display:flex;gap:16px;font-size:12px;color:#9B9484}
+.post-act span{display:flex;align-items:center;gap:3px;cursor:pointer;transition:color 0.15s}
+.post-act span:hover{color:#4A5D49}
+.post-act i{font-size:14px}
+.post-imgs{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:10px}
+.post-imgs div{aspect-ratio:1;border-radius:8px;background:rgba(74,93,73,0.05);display:flex;align-items:center;justify-content:center;font-size:28px;color:#8B9E89}
+.load-m{padding:20px;text-align:center;font-size:12px;color:#8B9E89}
+</style>
+
+<div class="pp">
+  <div class="pp-top">
+    <div class="pp-back"><i class="ti ti-arrow-left" aria-hidden="true"></i></div>
+    <div class="pp-hero">
+      <div class="pp-ava">🌻</div>
+      <div class="pp-name">李阿姨</div>
+      <div class="pp-bio">退休教师 · 养花三年 · 最爱月季和多肉<br>朝阳区 · 北京</div>
+    </div>
+  </div>
+
+  <div class="pp-acts">
+    <div class="pp-btn pri"><i class="ti ti-user-plus" aria-hidden="true" style="font-size:13px;vertical-align:-1px;margin-right:3px"></i>关注</div>
+    <div class="pp-btn sec"><i class="ti ti-message-circle" aria-hidden="true" style="font-size:13px;vertical-align:-1px;margin-right:3px"></i>留言</div>
+  </div>
+
+  <div class="pp-pots">
+    <div class="pp-pots-t"><i class="ti ti-plant-2" aria-hidden="true"></i>ta 的花盆</div>
+    <div class="pp-pots-row">
+      <div class="pp-pot"><div class="pp-pot-c">🌹</div><div class="pp-pot-n">月季</div><div class="pp-pot-d">Day 256</div></div>
+      <div class="pp-pot"><div class="pp-pot-c">🌻</div><div class="pp-pot-n">向日葵</div><div class="pp-pot-d">Day 45</div></div>
+      <div class="pp-pot"><div class="pp-pot-c">🪴</div><div class="pp-pot-n">多肉组合</div><div class="pp-pot-d">Day 180</div></div>
+      <div class="pp-pot"><div class="pp-pot-c">🌸</div><div class="pp-pot-n">茉莉</div><div class="pp-pot-d">Day 320</div></div>
+      <div class="pp-pot"><div class="pp-pot-c">🌵</div><div class="pp-pot-n">仙人掌</div><div class="pp-pot-d">Day 90</div></div>
+      <div class="pp-pot"><div class="pp-pot-c">🌷</div><div class="pp-pot-n">郁金香</div><div class="pp-pot-d">Day 60</div></div>
+      <div class="pp-pot"><div class="pp-pot-c">🍀</div><div class="pp-pot-n">薄荷</div><div class="pp-pot-d">Day 150</div></div>
+      <div class="pp-pot"><div class="pp-pot-c">🌿</div><div class="pp-pot-n">绿萝</div><div class="pp-pot-d">Day 400</div></div>
+    </div>
+  </div>
+
+  <div class="pp-sep"></div>
+
+  <div class="pp-feed">
+    <div class="pp-feed-head"><i class="ti ti-photo" aria-hidden="true"></i>动态</div>
+
+    <div class="post">
+      <div class="post-date"><i class="ti ti-calendar" aria-hidden="true"></i>5月24日 · 月季</div>
+      <div class="post-img">🌹</div>
+      <div class="post-text">今天开了三朵！红色的特别鲜艳，可能是前几天施肥的效果。养了快九个月终于等到了这一刻</div>
+      <div class="post-tags"><span class="post-tag">月季</span><span class="post-tag">开花</span><span class="post-tag">施肥</span></div>
+      <div class="post-act"><span><i class="ti ti-heart" aria-hidden="true"></i>28</span><span><i class="ti ti-message-circle" aria-hidden="true"></i>6</span></div>
+    </div>
+
+    <div class="post">
+      <div class="post-date"><i class="ti ti-calendar" aria-hidden="true"></i>5月22日 · 多肉组合</div>
+      <div class="post-imgs"><div>🪴</div><div>🌵</div></div>
+      <div class="post-text">多肉换盆啦！用了新买的陶盆，配上铺面石效果很好</div>
+      <div class="post-tags"><span class="post-tag">多肉</span><span class="post-tag">换盆</span></div>
+      <div class="post-act"><span><i class="ti ti-heart" aria-hidden="true"></i>15</span><span><i class="ti ti-message-circle" aria-hidden="true"></i>3</span></div>
+    </div>
+
+    <div class="post">
+      <div class="post-date"><i class="ti ti-calendar" aria-hidden="true"></i>5月20日 · 向日葵</div>
+      <div class="post-img">🌻</div>
+      <div class="post-text">向日葵长到 50 厘米了！每天都能看到变化，种子是在菜市场买的，没想到长这么好</div>
+      <div class="post-tags"><span class="post-tag">向日葵</span><span class="post-tag">生长记录</span></div>
+      <div class="post-act"><span><i class="ti ti-heart" aria-hidden="true"></i>42</span><span><i class="ti ti-message-circle" aria-hidden="true"></i>11</span></div>
+    </div>
+
+    <div class="post">
+      <div class="post-date"><i class="ti ti-calendar" aria-hidden="true"></i>5月18日 · 茉莉</div>
+      <div class="post-img">🌸</div>
+      <div class="post-text">茉莉花开了，满屋子都是香味。今年用了磷钾肥，花量比去年多好多</div>
+      <div class="post-tags"><span class="post-tag">茉莉</span><span class="post-tag">开花</span></div>
+      <div class="post-act"><span><i class="ti ti-heart" aria-hidden="true"></i>56</span><span><i class="ti ti-message-circle" aria-hidden="true"></i>8</span></div>
+    </div>
+
+    <div class="post">
+      <div class="post-date"><i class="ti ti-calendar" aria-hidden="true"></i>5月15日 · 月季</div>
+      <div class="post-imgs"><div>🌹</div><div>🌿</div><div>💧</div><div>☀️</div></div>
+      <div class="post-text">给月季做了一次大修剪，剪掉了枯枝和交叉枝，顺便施了点有机肥</div>
+      <div class="post-tags"><span class="post-tag">月季</span><span class="post-tag">修剪</span></div>
+      <div class="post-act"><span><i class="ti ti-heart" aria-hidden="true"></i>19</span><span><i class="ti ti-message-circle" aria-hidden="true"></i>4</span></div>
+    </div>
+
+    <div class="load-m"><i class="ti ti-loader" aria-hidden="true" style="font-size:14px;vertical-align:-2px;margin-right:3px"></i>加载更多...</div>
+  </div>
+</div>
