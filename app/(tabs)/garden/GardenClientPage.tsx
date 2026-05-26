@@ -159,6 +159,7 @@ export function GardenClientPage({ pots, tasks: _tasks, todayRecordedIds, commun
   const [gardenView, setGardenView]     = useState<'grid' | 'list'>('grid')
   const [showAddPot, setShowAddPot]     = useState(false)
   const [showAuthOverlay, setShowAuthOverlay] = useState(false)
+  const [helpFilter, setHelpFilter]     = useState(false)
 
   const isMyGarden = segment === 'My Garden'
 
@@ -191,6 +192,25 @@ export function GardenClientPage({ pots, tasks: _tasks, todayRecordedIds, commun
     { value: 'grid', label: 'Grid', icon: <IconLayoutGrid size={12} strokeWidth={1.75} /> },
     { value: 'list', label: 'List', icon: <IconList       size={12} strokeWidth={1.75} /> },
   ], [])
+
+  // ── Community tiles: real posts → optional help filter → demo fallback ────
+  const communityTiles = useMemo(() => {
+    // Map mode always uses the fixed demo layout
+    if (communityView !== 'feed' || communityPosts.length === 0) return DEMO_COMMUNITY_TILES
+    const filtered = helpFilter
+      ? communityPosts.filter(p => p.post_category === 'help')
+      : communityPosts
+    // If help filter is active but there are no help posts, return empty
+    // (empty array signals the overlay to show instead of demo tiles)
+    return filtered.map(postToTile)
+  }, [communityView, communityPosts, helpFilter])
+
+  // Show an empty-state overlay when the help filter returns 0 real posts
+  const showHelpEmpty =
+    helpFilter &&
+    communityView === 'feed' &&
+    communityPosts.length > 0 &&
+    communityPosts.filter(p => p.post_category === 'help').length === 0
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -247,7 +267,7 @@ export function GardenClientPage({ pots, tasks: _tasks, todayRecordedIds, commun
         </div>
 
         {/* Row 2 — full-width segmented control */}
-        <div style={{ marginBottom: 12 }}>
+        <div style={{ marginBottom: !isMyGarden && communityView === 'feed' ? 8 : 12 }}>
           <SegmentedControl
             /* handleSegmentChange gates My Garden for guests */
             options={['Community', 'My Garden']}
@@ -256,6 +276,30 @@ export function GardenClientPage({ pots, tasks: _tasks, todayRecordedIds, commun
             label="Garden view"
           />
         </div>
+
+        {/* Row 3 — Help filter chip (Community + Feed only) */}
+        {!isMyGarden && communityView === 'feed' && (
+          <div style={{ marginBottom: 10 }}>
+            <button
+              type="button"
+              onClick={() => setHelpFilter(v => !v)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                fontSize: 11, padding: '4px 12px', borderRadius: 14,
+                background: helpFilter ? 'rgba(91,143,185,0.18)' : 'var(--glass-sage-light)',
+                color: helpFilter ? 'var(--info)' : 'var(--sage-400)',
+                border: helpFilter ? '0.5px solid rgba(91,143,185,0.35)' : '0.5px solid transparent',
+                fontWeight: helpFilter ? 500 : 400,
+                fontFamily: 'var(--font-sans)',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              <span>🆘</span>
+              Help only
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ── Content area: fills all remaining height ─────────────────────── */}
@@ -265,19 +309,34 @@ export function GardenClientPage({ pots, tasks: _tasks, todayRecordedIds, commun
         {!isMyGarden ? (
           /* Community — canvas / feed fills the full content box.
              Map mode: always uses pre-positioned DEMO_COMMUNITY_TILES.
-             Feed mode: prefers real DB posts; falls back to demo tiles if none yet. */
+             Feed mode: uses filtered real posts (or demo fallback if none yet).
+             Help filter: shows only posts with post_category === 'help'. */
           <div style={{ position: 'absolute', inset: 0 }}>
             <PublicGarden
-              tiles={
-                communityView === 'feed' && communityPosts.length > 0
-                  ? communityPosts.map(postToTile)   // real live posts
-                  : DEMO_COMMUNITY_TILES              // map or no posts yet → demo
-              }
+              tiles={showHelpEmpty ? [] : communityTiles}
               myTile={MY_TILE}
               viewMode={communityView}
               onVisitGarden={(tile) => console.log('visit', tile.id)}
               onMessage={(tile) => console.log('message', tile.id)}
             />
+
+            {/* Empty state overlay — shown only when help filter is active with no results */}
+            {showHelpEmpty && (
+              <div style={{
+                position: 'absolute', inset: 0, zIndex: 10,
+                display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center',
+                background: 'var(--bg-base)',
+                gap: 10,
+                fontFamily: 'var(--font-sans)',
+              }}>
+                <span style={{ fontSize: 36 }}>🆘</span>
+                <p style={{ fontSize: 13, color: 'var(--sage-400)', margin: 0, textAlign: 'center', lineHeight: 1.6 }}>
+                  No help requests in the community yet.<br />
+                  <span style={{ fontSize: 11 }}>Mark a post as "Help" to appear here.</span>
+                </p>
+              </div>
+            )}
           </div>
 
         ) : gardenView === 'grid' ? (

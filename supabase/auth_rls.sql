@@ -121,8 +121,8 @@ CREATE POLICY "Own update tasks"
   );
 
 -- ─── 7. Supabase Storage: auth-gated uploads ────────────────────────────────
--- Run these in Supabase SQL Editor if the 'photos' bucket doesn't already have them.
--- SELECT policies are kept open (images must be publicly readable for <img> tags).
+-- NOTE: Storage policies have been moved to migrations/002_security_fixes.sql
+-- and are now ACTIVE. The commented-out versions below are kept for reference only.
 
 -- DROP POLICY IF EXISTS "Public read photos storage" ON storage.objects;
 -- DROP POLICY IF EXISTS "Auth upload photos storage"  ON storage.objects;

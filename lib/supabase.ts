@@ -1,10 +1,9 @@
-// lib/supabase.ts
 import { createClient } from '@supabase/supabase-js'
 
-// Use ?? fallback so the module doesn't throw during `next build` when
-// env vars are absent (Vercel build container).  The real values are
-// injected at runtime via Vercel Environment Variables.
-export const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL    ?? 'https://placeholder.supabase.co',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? 'placeholder-key',
-)
+// Centralised env — every other file imports these instead of reading process.env directly.
+// The ?? fallback prevents build-time crashes when env vars are missing (e.g. Vercel first deploy).
+// Placeholder values produce a valid (but non-connecting) client so module imports never throw.
+export const SUPABASE_URL      = process.env.NEXT_PUBLIC_SUPABASE_URL      ?? 'https://placeholder.supabase.co'
+export const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? 'placeholder-key'
+
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)

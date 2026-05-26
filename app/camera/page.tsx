@@ -8,6 +8,7 @@ import { IconArrowLeft, IconCamera, IconPhoto, IconLoader2, IconCheck, IconX } f
 import { format } from 'date-fns'
 import { createClient } from '@supabase/supabase-js'
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser'
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase'
 import type { Pot } from '@/lib/types'
 
 // ── Image resize helper (adapted from legacy upload page) ─────────────────────
@@ -127,8 +128,8 @@ function CameraPageInner() {
       // Supabase always sees auth.uid() = user.id on the server — no cookie
       // detection, no singleton race, no SSR/browser ambiguity.
       const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        SUPABASE_URL,
+        SUPABASE_ANON_KEY,
         { global: { headers: { Authorization: `Bearer ${session.access_token}` } } }
       )
 
@@ -146,38 +147,21 @@ function CameraPageInner() {
       const { data: { publicUrl } } = supabase.storage.from('photos').getPublicUrl(path)
 
       // ── DB write ─────────────────────────────────────────────────────────
-      // user_id = user.id and auth.uid() = user.id are now guaranteed equal.
-      const newValues = {
-        user_id:     user.id,
-        user_name:   user.id,
-        pot_id:      potId,
-        record_date: today,
-        image_url:   publicUrl,
-        ...(caption.trim() && { caption: caption.trim() }),
-        has_post:    publishPost,
-      }
-
-      // Two-step insert/update — avoids the ON CONFLICT UPDATE path hitting the
-      // "USING (auth.uid() = user_id)" check when an existing row has user_id = NULL
-      // (seed / legacy data).
-      const { data: existing } = await supabase
+      // Always INSERT a new row — the UNIQUE(pot_id, record_date) constraint
+      // has been removed (see supabase/migrations/001_remove_unique_constraint.sql).
+      // Multiple uploads on the same day each become an independent record.
+      // The timeline groups by date client-side and shows the latest as cover.
+      const { error: dbErr } = await supabase
         .from('daily_records')
-        .select('id')
-        .eq('pot_id', potId)
-        .eq('record_date', today)
-        .maybeSingle()
-
-      let dbErr
-      if (existing) {
-        ;({ error: dbErr } = await supabase
-          .from('daily_records')
-          .update(newValues)
-          .eq('id', existing.id))
-      } else {
-        ;({ error: dbErr } = await supabase
-          .from('daily_records')
-          .insert(newValues))
-      }
+        .insert({
+          user_id:     user.id,
+          user_name:   user.id,
+          pot_id:      potId,
+          record_date: today,
+          image_url:   publicUrl,
+          ...(caption.trim() && { caption: caption.trim() }),
+          has_post:    publishPost,
+        })
       if (dbErr) throw new Error(dbErr.message)
 
       setStatus('done')

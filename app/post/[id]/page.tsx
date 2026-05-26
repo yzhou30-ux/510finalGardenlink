@@ -4,10 +4,11 @@ export const dynamic = 'force-dynamic'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { IconArrowLeft } from '@tabler/icons-react'
-import { getRecordById, getPotById, getCommentsByRecord } from '@/lib/queries'
+import { getRecordById, getPotById, getCommentsByRecord, getRecordsByPot } from '@/lib/queries'
 import { getServerUser } from '@/lib/auth'
 import { CommentForm } from '@/components/CommentForm'
 import { PostInteractions } from './PostInteractions'
+import { PotHistory } from './PotHistory'
 
 interface PageProps {
   params: { id: string }
@@ -46,14 +47,23 @@ export default async function PostDetailPage({ params }: PageProps) {
   const record = await getRecordById(params.id)
   if (!record) notFound()
 
-  const [pot, comments, user] = await Promise.all([
+  const [pot, comments, user, potRecords] = await Promise.all([
     getPotById(record.pot_id),
     getCommentsByRecord(record.id),
     getServerUser(),
+    getRecordsByPot(record.pot_id).catch(() => []),
   ])
   const isAuthenticated = !!user
 
   const potName = pot?.name ?? 'Unknown pot'
+
+  // Sibling records for the history strip — newest first, current post excluded, max 6
+  const historyRecords = potRecords
+    .filter(r => r.id !== record.id)
+    .slice(0, 6)
+
+  // Show help banner when the post is categorised as 'help'
+  const isHelpPost = record.post_category === 'help'
 
   return (
     <div style={{
@@ -98,6 +108,24 @@ export default async function PostDetailPage({ params }: PageProps) {
           🌱 {potName}
         </span>
       </div>
+
+      {/* ── Help banner (only shown for 'help' category posts) ─────────────── */}
+      {isHelpPost && (
+        <div style={{
+          margin: '10px 16px 0',
+          padding: '9px 14px',
+          background: 'var(--warning-bg)',
+          border: '0.5px solid rgba(196,147,90,0.25)',
+          borderRadius: 10,
+          display: 'flex', alignItems: 'center', gap: 8,
+          fontFamily: 'var(--font-sans)',
+        }}>
+          <span style={{ fontSize: 14, flexShrink: 0 }}>⚠️</span>
+          <span style={{ fontSize: 12, color: 'var(--warning)', lineHeight: 1.4 }}>
+            Asking for help — check the plant&apos;s history below for context
+          </span>
+        </div>
+      )}
 
       {/* ── Cover photo ────────────────────────────────────────────────────── */}
       {record.image_url && (
@@ -251,6 +279,13 @@ export default async function PostDetailPage({ params }: PageProps) {
           </div>
         </div>
       </div>
+      {/* ── Pot history strip ──────────────────────────────────────────────── */}
+      {/* Renders nothing when historyRecords is empty */}
+      <PotHistory
+        currentRecord={record}
+        historyRecords={historyRecords}
+        potName={potName}
+      />
     </div>
   )
 }

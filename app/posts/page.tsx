@@ -21,14 +21,28 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-export default async function PostsPage() {
+// ── All categories (for the filter strip) ────────────────────────────────────
+const ALL_CATEGORIES = Object.entries(CATEGORY_META) as [PostCategory, typeof CATEGORY_META[PostCategory]][]
+
+export default async function PostsPage({
+  searchParams,
+}: {
+  searchParams?: { category?: string }
+}) {
   const user   = await getServerUser()
   const userId = user?.id ?? null
 
+  const activeCategory = (searchParams?.category ?? '') as PostCategory | ''
+
   // ── Fetch — only the logged-in user's published posts, by user_id ─────────
-  const posts = userId
+  const allPosts = userId
     ? await getMyPostsWithPotName(userId).catch(() => [])
     : []
+
+  // ── Server-side category filter ───────────────────────────────────────────
+  const posts = activeCategory
+    ? allPosts.filter(p => p.post_category === activeCategory)
+    : allPosts
 
   return (
     <div style={{
@@ -40,33 +54,83 @@ export default async function PostsPage() {
     }}>
       {/* Header */}
       <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        padding: '16px 16px 12px',
         borderBottom: '0.5px solid var(--border-default)',
         background: 'var(--bg-base)',
         position: 'sticky', top: 0, zIndex: 10,
       }}>
-        <Link
-          href="/profile"
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            width: 32, height: 32, borderRadius: '50%',
-            background: 'var(--glass-sage-light)',
-            border: '0.5px solid var(--border-default)',
-            color: 'var(--sage-700)', textDecoration: 'none', flexShrink: 0,
-          }}
-          aria-label="Back"
-        >
-          <IconArrowLeft size={16} strokeWidth={1.7} />
-        </Link>
-        <h1 style={{ fontSize: 18, fontWeight: 600, color: 'var(--sage-900)', margin: 0, flex: 1 }}>
-          My Posts
-        </h1>
-        <span style={{ fontSize: 10, color: 'var(--sage-300)' }}>
-          {posts.length} {posts.length === 1 ? 'post' : 'posts'}
-        </span>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '16px 16px 12px',
+        }}>
+          <Link
+            href="/profile"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 32, height: 32, borderRadius: '50%',
+              background: 'var(--glass-sage-light)',
+              border: '0.5px solid var(--border-default)',
+              color: 'var(--sage-700)', textDecoration: 'none', flexShrink: 0,
+            }}
+            aria-label="Back"
+          >
+            <IconArrowLeft size={16} strokeWidth={1.7} />
+          </Link>
+          <h1 style={{ fontSize: 18, fontWeight: 600, color: 'var(--sage-900)', margin: 0, flex: 1 }}>
+            My Posts
+          </h1>
+          <span style={{ fontSize: 10, color: 'var(--sage-300)' }}>
+            {posts.length}{activeCategory ? ` / ${allPosts.length}` : ''} {allPosts.length === 1 ? 'post' : 'posts'}
+          </span>
+        </div>
+
+        {/* ── Category filter chips ─────────────────────────────────────────── */}
+        <div style={{
+          display: 'flex', flexWrap: 'wrap', gap: 6,
+          padding: '0 16px 12px',
+        }}>
+          {/* "All" chip */}
+          <Link
+            href="/posts"
+            style={{
+              display: 'inline-flex', alignItems: 'center',
+              fontSize: 11, padding: '4px 12px', borderRadius: 14,
+              background: !activeCategory ? 'var(--glass-sage-strong)' : 'var(--glass-sage-light)',
+              color: !activeCategory ? 'var(--sage-900)' : 'var(--sage-400)',
+              border: !activeCategory ? '0.5px solid var(--glass-sage-border)' : '0.5px solid transparent',
+              fontWeight: !activeCategory ? 500 : 400,
+              textDecoration: 'none',
+              transition: 'background 0.15s',
+            }}
+          >
+            All
+          </Link>
+
+          {/* Per-category chips */}
+          {ALL_CATEGORIES.map(([key, meta]) => {
+            const isActive = activeCategory === key
+            return (
+              <Link
+                key={key}
+                href={isActive ? '/posts' : `/posts?category=${key}`}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  fontSize: 11, padding: '4px 12px', borderRadius: 14,
+                  background: isActive ? meta.color : 'var(--glass-sage-light)',
+                  color: isActive ? 'var(--sage-700)' : 'var(--sage-400)',
+                  border: isActive ? '0.5px solid var(--glass-sage-border)' : '0.5px solid transparent',
+                  fontWeight: isActive ? 500 : 400,
+                  textDecoration: 'none',
+                  transition: 'background 0.15s',
+                }}
+              >
+                <span>{meta.emoji}</span>
+                {meta.label}
+              </Link>
+            )
+          })}
+        </div>
       </div>
 
       {/* Post list */}
@@ -95,7 +159,7 @@ export default async function PostsPage() {
           </div>
         )}
 
-        {/* Signed in but no posts */}
+        {/* Signed in but no posts (all / filtered) */}
         {userId && posts.length === 0 && (
           <div style={{
             padding: '48px 16px',
@@ -103,8 +167,13 @@ export default async function PostsPage() {
             color: 'var(--sage-300)',
             fontSize: 13,
           }}>
-            <div style={{ fontSize: 32, marginBottom: 12 }}>📷</div>
-            No posts yet — tap <strong>Post</strong> on a daily card to share a moment
+            <div style={{ fontSize: 32, marginBottom: 12 }}>
+              {activeCategory ? CATEGORY_META[activeCategory].emoji : '📷'}
+            </div>
+            {activeCategory
+              ? <>No <strong>{CATEGORY_META[activeCategory].label}</strong> posts yet</>
+              : <>No posts yet — tap <strong>Post</strong> on a daily card to share a moment</>
+            }
           </div>
         )}
 

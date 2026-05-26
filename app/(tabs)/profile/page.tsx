@@ -26,11 +26,20 @@ export default async function ProfilePage() {
     userId ? getProfileByUserId(userId).catch(() => null) : Promise.resolve(null),
   ])
 
+  // Fallback chain for display name:
+  //   1. user_metadata.display_name — set directly at signup, always accurate
+  //   2. profiles table — may have default 'Plant Lover' if trigger ran before metadata
+  //   3. email prefix
+  //   4. hard default
+  const metaName    = (user?.user_metadata?.display_name as string | undefined)?.trim() || undefined
   const displayName = user
-    ? (profile?.display_name ?? (await getServerDisplayName(user)))
+    ? (metaName ?? profile?.display_name ?? user.email?.split('@')[0] ?? 'Plant Lover')
     : 'Garden Guest'
 
-  const avatarEmoji = profile?.avatar_emoji ?? '🪴'
+  // Same chain for avatar: prefer profile table (can be updated) → signup metadata → default
+  const avatarEmoji = profile?.avatar_emoji
+    ?? (user?.user_metadata?.avatar_emoji as string | undefined)
+    ?? '🪴'
 
   const stats = [
     { value: pots.length,    label: 'Pots'    },

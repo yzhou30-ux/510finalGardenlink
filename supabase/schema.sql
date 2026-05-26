@@ -23,8 +23,10 @@ CREATE TABLE IF NOT EXISTS daily_records (
   tags         TEXT[],
   has_post     BOOLEAN DEFAULT false,
   record_date  DATE NOT NULL,
-  created_at   TIMESTAMPTZ DEFAULT now(),
-  UNIQUE (pot_id, record_date)
+  created_at   TIMESTAMPTZ DEFAULT now()
+  -- NOTE: UNIQUE(pot_id, record_date) intentionally removed.
+  -- Multiple uploads on the same day are each stored as independent rows.
+  -- The timeline groups by date client-side and uses the latest row as cover.
 );
 
 -- ─── 养护任务 ─────────────────────────────────────────────────────────────

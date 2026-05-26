@@ -8,6 +8,7 @@ import { format } from 'date-fns'
 import { IconX, IconLoader2, IconCheck } from '@tabler/icons-react'
 import { createClient } from '@supabase/supabase-js'
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser'
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase'
 import type { CardData } from './CardDeck/types'
 import type { PostCategory } from '@/lib/types'
 
@@ -66,8 +67,8 @@ export function PostPublishModal({ card, onClose, onPublished }: PostPublishModa
       if (!session) throw new Error('Please sign in to publish a post.')
 
       const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        SUPABASE_URL,
+        SUPABASE_ANON_KEY,
         { global: { headers: { Authorization: `Bearer ${session.access_token}` } } }
       )
 

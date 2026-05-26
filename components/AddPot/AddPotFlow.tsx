@@ -7,6 +7,7 @@ import { IconX, IconChevronLeft } from '@tabler/icons-react'
 import { differenceInDays, parseISO } from 'date-fns'
 import { createClient } from '@supabase/supabase-js'
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser'
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase'
 import { StepPhoto } from './StepPhoto'
 import { StepInfo } from './StepInfo'
 import { StepConfirm } from './StepConfirm'
@@ -104,8 +105,8 @@ export function AddPotFlow({ open, onClose, onComplete }: AddPotFlowProps) {
       // Create a plain supabase-js client with the JWT injected as Authorization
       // header — this guarantees auth.uid() = user.id on the Supabase server.
       const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        SUPABASE_URL,
+        SUPABASE_ANON_KEY,
         { global: { headers: { Authorization: `Bearer ${session.access_token}` } } }
       )
 

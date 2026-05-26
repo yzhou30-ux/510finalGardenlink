@@ -11,9 +11,55 @@ import { ViewToggle } from '@/components/ViewToggle'
 import { PostPublishModal } from '@/components/PostPublishModal'
 import type { Pot, DailyRecord } from '@/lib/types'
 
+// ── Group records by date → CardData[] ───────────────────────────────────────
+// Each unique record_date becomes one CardData for the CardDeck.
+// Within a day, records are sorted newest-first; the first one provides the
+// cover image.  All records for the day are stashed in `allRecords`.
+function groupRecordsByDate(records: DailyRecord[]): CardData[] {
+  // Build a map: dateString → DailyRecord[]
+  const byDate = new Map<string, DailyRecord[]>()
+  for (const r of records) {
+    const existing = byDate.get(r.record_date)
+    if (existing) {
+      existing.push(r)
+    } else {
+      byDate.set(r.record_date, [r])
+    }
+  }
+
+  // Convert each group to a CardData, then sort descending by date
+  return Array.from(byDate.entries())
+    .map(([dateStr, group]) => {
+      // Sort within the group: newest created_at first
+      const sorted = [...group].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
+      const latest = sorted[0]
+      return {
+        id:           latest.id,
+        date:         new Date(dateStr + 'T12:00:00'),  // noon local time avoids TZ off-by-one
+        potId:        latest.pot_id,
+        coverImageUrl: latest.image_url ?? undefined,
+        caption:      latest.caption ?? undefined,
+        tags:         latest.tags ?? undefined,
+        hasPost:      sorted.some(r => r.has_post),
+        allRecords:   sorted.map(r => ({
+          id:        r.id,
+          image_url: r.image_url,
+          caption:   r.caption,
+          has_post:  r.has_post,
+          created_at: r.created_at,
+        })),
+      } satisfies CardData
+    })
+    .sort((a, b) => b.date.getTime() - a.date.getTime())
+}
+
 // ── Feed list ─────────────────────────────────────────────────────────────────
-function FeedList({ cards }: { cards: CardData[] }) {
-  if (cards.length === 0) {
+// Shows every individual DailyRecord as its own row (newest first).
+// This means multiple uploads on the same day each appear separately.
+function FeedList({ records }: { records: DailyRecord[] }) {
+  if (records.length === 0) {
     return (
       <div style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -27,32 +73,32 @@ function FeedList({ cards }: { cards: CardData[] }) {
   }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
-      {cards.map((card) => (
-        <div key={card.id} style={{
+      {records.map((record) => (
+        <div key={record.id} style={{
           display: 'flex', alignItems: 'center', gap: 12, padding: 10,
           background: 'var(--bg-card)', border: '0.5px solid var(--border-default)', borderRadius: 12,
         }}>
           <div style={{
             width: 64, height: 64, borderRadius: 8,
             background: 'var(--glass-sage-light)', flexShrink: 0,
-            backgroundImage: card.coverImageUrl ? `url(${card.coverImageUrl})` : undefined,
+            backgroundImage: record.image_url ? `url(${record.image_url})` : undefined,
             backgroundSize: 'cover', backgroundPosition: 'center',
-            display: card.coverImageUrl ? undefined : 'flex', alignItems: 'center',
+            display: record.image_url ? undefined : 'flex', alignItems: 'center',
             justifyContent: 'center', fontSize: 24,
           }}>
-            {!card.coverImageUrl && '🪴'}
+            {!record.image_url && '🪴'}
           </div>
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
             <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--sage-900)', fontFamily: 'var(--font-sans)' }}>
-              {format(card.date, 'MMM d')}
+              {format(new Date(record.record_date + 'T12:00:00'), 'MMM d')}
             </span>
             <span style={{ fontSize: 11, color: 'var(--sage-300)', fontFamily: 'var(--font-sans)',
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {card.caption ?? 'No caption'}
+              {record.caption ?? 'No caption'}
             </span>
-            {card.tags && card.tags.length > 0 && (
+            {record.tags && record.tags.length > 0 && (
               <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                {card.tags.map((tag) => (
+                {record.tags.map((tag) => (
                   <span key={tag} style={{ fontSize: 9, padding: '2px 6px', borderRadius: 10,
                     background: 'var(--glass-sage-light)', color: 'var(--sage-500)', fontFamily: 'var(--font-sans)' }}>
                     {tag}
@@ -61,7 +107,7 @@ function FeedList({ cards }: { cards: CardData[] }) {
               </div>
             )}
           </div>
-          {card.hasPost && (
+          {record.has_post && (
             <span style={{ fontSize: 8, padding: '2px 6px', borderRadius: 8,
               background: 'var(--success-bg)', color: 'var(--success)',
               fontFamily: 'var(--font-sans)', flexShrink: 0 }}>
@@ -94,16 +140,11 @@ export function TimelineClientPage({ pots, records, selectedPotId }: Props) {
 
   const potOptions: PotOption[] = pots.map(p => ({ id: p.id, name: p.name, daysOwned: p.days_owned }))
 
-  // Convert DailyRecords → CardData
-  const cards: CardData[] = records.map(r => ({
-    id: r.id,
-    date: new Date(r.record_date + 'T12:00:00'),   // noon local time avoids TZ off-by-one
-    potId: r.pot_id,
-    coverImageUrl: r.image_url ?? undefined,
-    caption: r.caption ?? undefined,
-    tags: r.tags ?? undefined,
-    hasPost: r.has_post,
-  }))
+  // Group DailyRecords by date → one CardData per day for the CardDeck.
+  // Multiple uploads on the same day share one card; the latest record
+  // becomes the cover image.  All records for the day are stored in
+  // `allRecords` for future multi-photo display.
+  const cards: CardData[] = useMemo(() => groupRecordsByDate(records), [records])
 
   function handlePotChange(newPotId: string) {
     router.push(`/timeline?pot=${encodeURIComponent(newPotId)}`)
@@ -172,7 +213,7 @@ export function TimelineClientPage({ pots, records, selectedPotId }: Props) {
           </div>
         )
       ) : (
-        <FeedList cards={cards} />
+        <FeedList records={records} />
       )}
 
       {/* Post publish modal */}

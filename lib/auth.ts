@@ -14,8 +14,12 @@ export async function getServerUser(): Promise<User | null> {
 }
 
 /**
- * Returns the user's display name from the profiles table,
- * falling back to the email prefix or 'Plant Lover'.
+ * Returns the user's display name.
+ * Fallback chain:
+ *   1. profiles table (writable — future settings page)
+ *   2. user_metadata.display_name (set at signup)
+ *   3. email prefix
+ *   4. 'Plant Lover'
  */
 export async function getServerDisplayName(user: User): Promise<string> {
   const supabase = createSupabaseServerClient()
@@ -24,5 +28,6 @@ export async function getServerDisplayName(user: User): Promise<string> {
     .select('display_name')
     .eq('user_id', user.id)
     .single()
-  return data?.display_name ?? user.email?.split('@')[0] ?? 'Plant Lover'
+  const metaName = (user.user_metadata?.display_name as string | undefined)?.trim() || undefined
+  return data?.display_name ?? metaName ?? user.email?.split('@')[0] ?? 'Plant Lover'
 }

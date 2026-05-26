@@ -1,29 +1,58 @@
 // app/post/community/[id]/CommunityCommentInput.tsx
-// Optimistic comment input for community posts (no DB — demo only)
+// Comment input for community posts.
+// When a real UUID recordId is passed, persists to daily_comments.
+// Falls back to optimistic-local-only for demo tile IDs (non-UUID strings).
 'use client'
 
 import { useState } from 'react'
 import { IconSend } from '@tabler/icons-react'
+import { createSupabaseBrowserClient } from '@/lib/supabase-browser'
+
+// ── UUID validator (matches the standard 8-4-4-4-12 hex format) ──────────────
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 interface Props {
   viewerEmoji: string
   viewerName: string
+  /** When this is a valid UUID the comment is also written to daily_comments. */
+  recordId?: string
 }
 
 interface LocalComment {
   text: string
 }
 
-export function CommunityCommentInput({ viewerEmoji, viewerName }: Props) {
-  const [body, setBody]         = useState('')
-  const [sent, setSent]         = useState<LocalComment[]>([])
+export function CommunityCommentInput({ viewerEmoji, viewerName, recordId }: Props) {
+  const [body, setBody]     = useState('')
+  const [sent, setSent]     = useState<LocalComment[]>([])
+  const [saving, setSaving] = useState(false)
 
-  function handleSubmit(e: React.FormEvent) {
+  const isRealRecord = !!recordId && UUID_RE.test(recordId)
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const trimmed = body.trim()
-    if (!trimmed) return
+    if (!trimmed || saving) return
+
+    // Optimistic update — show immediately regardless of DB outcome
     setSent(prev => [...prev, { text: trimmed }])
     setBody('')
+
+    if (isRealRecord) {
+      setSaving(true)
+      try {
+        const supabase = createSupabaseBrowserClient()
+        await supabase.from('daily_comments').insert({
+          record_id: recordId,
+          user_name: viewerName,
+          body: trimmed,
+        })
+      } catch {
+        // Silently swallow — optimistic comment is already shown
+      } finally {
+        setSaving(false)
+      }
+    }
   }
 
   return (
@@ -86,19 +115,19 @@ export function CommunityCommentInput({ viewerEmoji, viewerName }: Props) {
           />
           <button
             type="submit"
-            disabled={!body.trim()}
+            disabled={!body.trim() || saving}
             aria-label="Post comment"
             style={{
               position: 'absolute', bottom: 7, right: 8,
               width: 26, height: 26, borderRadius: '50%',
-              background: body.trim() ? 'var(--success)' : 'var(--glass-sage-medium)',
+              background: body.trim() && !saving ? 'var(--success)' : 'var(--glass-sage-medium)',
               border: 'none',
-              cursor: body.trim() ? 'pointer' : 'default',
+              cursor: body.trim() && !saving ? 'pointer' : 'default',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'background 0.15s',
             }}
           >
-            <IconSend size={13} color={body.trim() ? '#fff' : 'var(--sage-400)'} strokeWidth={1.8} />
+            <IconSend size={13} color={body.trim() && !saving ? '#fff' : 'var(--sage-400)'} strokeWidth={1.8} />
           </button>
         </form>
       </div>

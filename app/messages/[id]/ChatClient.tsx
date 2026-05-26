@@ -6,6 +6,7 @@ import { useState, useRef, useEffect } from 'react'
 import { IconSend, IconLoader2 } from '@tabler/icons-react'
 import { createClient } from '@supabase/supabase-js'
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser'
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase'
 import type { Message } from '@/lib/types'
 
 interface Props {
@@ -83,8 +84,8 @@ export function ChatClient({
 
       const supabase = session
         ? createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            SUPABASE_URL,
+            SUPABASE_ANON_KEY,
             { global: { headers: { Authorization: `Bearer ${session.access_token}` } } }
           )
         : sbrClient   // fall back to cookie client for unauthenticated (Guest) sends
