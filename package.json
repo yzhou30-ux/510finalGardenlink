@@ -11,6 +11,7 @@
     "test:watch": "jest"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.45.4",
     "@tabler/icons-react": "^3.0.0",
     "date-fns": "^4.2.0",
@@ -23,7 +24,7 @@
   "devDependencies": {
     "@testing-library/jest-dom": "^6",
     "@testing-library/react": "^16",
-"@types/jest": "^29",
+    "@types/jest": "^29",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

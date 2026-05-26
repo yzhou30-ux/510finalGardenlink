@@ -2,7 +2,7 @@
 // Protected route: middleware redirects unauthenticated users to /auth/login
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { Suspense, useState, useRef, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { IconArrowLeft, IconCamera, IconPhoto, IconLoader2, IconCheck, IconX } from '@tabler/icons-react'
 import { format } from 'date-fns'
@@ -51,7 +51,9 @@ function potEmoji(name: string): string {
 
 type UploadStatus = 'idle' | 'uploading' | 'done' | 'error'
 
-export default function CameraPage() {
+// Inner component holds all logic that calls useSearchParams()
+// Must be wrapped in <Suspense> to satisfy Next.js 14 static-render requirements
+function CameraPageInner() {
   const router       = useRouter()
   const searchParams = useSearchParams()
   const preFill      = searchParams.get('pot')         // pre-select a pot
@@ -417,5 +419,22 @@ export default function CameraPage() {
 
       </div>
     </div>
+  )
+}
+
+export default function CameraPage() {
+  return (
+    <Suspense fallback={
+      <div style={{
+        maxWidth: 480, margin: '0 auto', minHeight: '100vh',
+        background: 'var(--bg-base)', display: 'flex',
+        alignItems: 'center', justifyContent: 'center',
+        color: 'var(--sage-400)', fontFamily: 'var(--font-sans)', fontSize: 13,
+      }}>
+        Loading…
+      </div>
+    }>
+      <CameraPageInner />
+    </Suspense>
   )
 }
