@@ -48,3 +48,7 @@ Thumbs.db
 
 # TypeScript
 *.tsbuildinfo
+
+# Local reference / proposal dirs (not part of the app)
+/legacy/
+/NewProposal/
