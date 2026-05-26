@@ -4,15 +4,19 @@
 import { useState } from 'react'
 import { IconSend } from '@tabler/icons-react'
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser'
+import { AuthOverlay } from './AuthOverlay'
 
 interface CommentFormProps {
   recordId: string
+  /** When false, tapping the textarea shows the auth overlay instead. */
+  isAuthenticated?: boolean
 }
 
-export function CommentForm({ recordId }: CommentFormProps) {
+export function CommentForm({ recordId, isAuthenticated = true }: CommentFormProps) {
   const [body, setBody]     = useState('')
   const [status, setStatus] = useState<'idle' | 'saving' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
+  const [showOverlay, setShowOverlay] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -43,6 +47,14 @@ export function CommentForm({ recordId }: CommentFormProps) {
   }
 
   return (
+    <>
+      {showOverlay && (
+        <AuthOverlay
+          message="Sign in to join the conversation"
+          onClose={() => setShowOverlay(false)}
+        />
+      )}
+
     <form
       onSubmit={handleSubmit}
       style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}
@@ -51,6 +63,7 @@ export function CommentForm({ recordId }: CommentFormProps) {
         <textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
+          onFocus={() => { if (!isAuthenticated) { setShowOverlay(true) } }}
           placeholder="Share a tip or encouragement…"
           rows={3}
           style={{
@@ -98,5 +111,6 @@ export function CommentForm({ recordId }: CommentFormProps) {
         </p>
       )}
     </form>
+    </>
   )
 }

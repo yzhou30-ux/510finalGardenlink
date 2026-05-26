@@ -29,6 +29,7 @@ export default async function GardenPage() {
       tasks={tasks}
       todayRecordedIds={todayRecordedIds}
       communityPosts={communityPosts}
+      isAuthenticated={!!user}
     />
   )
 }

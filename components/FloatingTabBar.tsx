@@ -2,11 +2,18 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { useState } from 'react'
 import { IconPlant2, IconCalendar, IconCamera, IconUser } from '@tabler/icons-react'
+import { useAuthStatus } from '@/lib/useAuthStatus'
+import { AuthOverlay } from './AuthOverlay'
 
 export function FloatingTabBar({ hasUnread = true }: { hasUnread?: boolean }) {
   const pathname = usePathname()
   const router   = useRouter()
+  const { isGuest } = useAuthStatus()
+
+  // Overlay state — message changes based on which protected action was tapped
+  const [overlayMsg, setOverlayMsg] = useState<string | null>(null)
 
   // Hide on auth pages and the camera page (which has its own back button)
   if (pathname.startsWith('/auth') || pathname === '/camera') return null
@@ -30,6 +37,7 @@ export function FloatingTabBar({ hasUnread = true }: { hasUnread?: boolean }) {
     border: 'none',
     padding: 0,
     position: 'relative',
+    fontFamily: 'var(--font-sans)',
   })
 
   const labelStyle: React.CSSProperties = {
@@ -39,8 +47,23 @@ export function FloatingTabBar({ hasUnread = true }: { hasUnread?: boolean }) {
     fontFamily: 'var(--font-sans)',
   }
 
+  /** Navigate to a protected route, or show overlay if the user is a guest. */
+  function handleProtected(href: string, message: string) {
+    if (isGuest) {
+      setOverlayMsg(message)
+    } else {
+      router.push(href)
+    }
+  }
+
   return (
-    <nav
+    <>
+      {/* Auth overlay — rendered inside the nav tree so it's always z-indexed above */}
+      {overlayMsg && (
+        <AuthOverlay message={overlayMsg} onClose={() => setOverlayMsg(null)} />
+      )}
+
+      <nav
         style={{
           position: 'fixed',
           bottom: 14,
@@ -63,21 +86,25 @@ export function FloatingTabBar({ hasUnread = true }: { hasUnread?: boolean }) {
         }}
         aria-label="Main navigation"
       >
-        {/* Garden tab */}
+        {/* Garden tab — always accessible */}
         <Link href="/garden" style={tabStyle(isActive('/garden'))} aria-current={isActive('/garden') ? 'page' : undefined}>
           <IconPlant2 size={20} strokeWidth={1.7} />
           <span style={labelStyle}>Garden</span>
         </Link>
 
-        {/* Timeline tab */}
-        <Link href="/timeline" style={tabStyle(isActive('/timeline'))} aria-current={isActive('/timeline') ? 'page' : undefined}>
+        {/* Timeline tab — protected for guests */}
+        <button
+          onClick={() => handleProtected('/timeline', 'Sign in to start your plant diary')}
+          style={tabStyle(isActive('/timeline'))}
+          aria-current={isActive('/timeline') ? 'page' : undefined}
+        >
           <IconCalendar size={20} strokeWidth={1.7} />
           <span style={labelStyle}>Timeline</span>
-        </Link>
+        </button>
 
-        {/* Camera button (center) — navigates to /camera; middleware redirects to login if needed */}
+        {/* Camera button (center) — protected for guests */}
         <button
-          onClick={() => router.push('/camera')}
+          onClick={() => handleProtected('/camera', 'Sign in to record your plants')}
           style={{
             width: 34,
             height: 34,
@@ -97,9 +124,9 @@ export function FloatingTabBar({ hasUnread = true }: { hasUnread?: boolean }) {
           <IconCamera size={18} strokeWidth={1.7} />
         </button>
 
-        {/* Profile tab */}
-        <Link
-          href="/profile"
+        {/* Profile tab — protected for guests */}
+        <button
+          onClick={() => handleProtected('/profile', 'Sign in to start your plant diary')}
           style={tabStyle(isActive('/profile'))}
           aria-current={isActive('/profile') ? 'page' : undefined}
         >
@@ -121,7 +148,8 @@ export function FloatingTabBar({ hasUnread = true }: { hasUnread?: boolean }) {
               role="status"
             />
           )}
-        </Link>
+        </button>
       </nav>
+    </>
   )
 }

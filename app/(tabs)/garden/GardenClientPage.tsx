@@ -14,6 +14,7 @@ import type { Pot, Task } from '@/lib/types'
 import type { PostWithPot } from '@/lib/queries'
 import type { GardenTile } from '@/components/PublicGarden/types'
 import { MY_TILE, DEMO_COMMUNITY_TILES } from '@/lib/communityDemoData'
+import { AuthOverlay } from '@/components/AuthOverlay'
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
@@ -143,11 +144,13 @@ interface GardenClientPageProps {
   todayRecordedIds: string[]
   /** Real community posts fetched server-side (has_post=true, all users). */
   communityPosts: PostWithPot[]
+  /** False when user is not logged in — used to gate My Garden access. */
+  isAuthenticated: boolean
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export function GardenClientPage({ pots, tasks: _tasks, todayRecordedIds, communityPosts }: GardenClientPageProps) {
+export function GardenClientPage({ pots, tasks: _tasks, todayRecordedIds, communityPosts, isAuthenticated }: GardenClientPageProps) {
   const router = useRouter()
 
   // ── State ─────────────────────────────────────────────────────────────────
@@ -155,8 +158,18 @@ export function GardenClientPage({ pots, tasks: _tasks, todayRecordedIds, commun
   const [communityView, setCommunityView] = useState<'map' | 'feed'>('map')
   const [gardenView, setGardenView]     = useState<'grid' | 'list'>('grid')
   const [showAddPot, setShowAddPot]     = useState(false)
+  const [showAuthOverlay, setShowAuthOverlay] = useState(false)
 
   const isMyGarden = segment === 'My Garden'
+
+  /** Intercept My Garden switch — show auth overlay for guests. */
+  function handleSegmentChange(seg: string) {
+    if (seg === 'My Garden' && !isAuthenticated) {
+      setShowAuthOverlay(true)
+      return   // keep segment on Community
+    }
+    setSegment(seg as 'Community' | 'My Garden')
+  }
 
   // ── Data ──────────────────────────────────────────────────────────────────
   const recordedSet = new Set(todayRecordedIds)
@@ -181,6 +194,15 @@ export function GardenClientPage({ pots, tasks: _tasks, todayRecordedIds, commun
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
+    <>
+      {/* Auth overlay for guests who tap "My Garden" */}
+      {showAuthOverlay && (
+        <AuthOverlay
+          message="Sign in to start your plant diary"
+          onClose={() => setShowAuthOverlay(false)}
+        />
+      )}
+
     <div style={{
       maxWidth: 480,
       margin: '0 auto',
@@ -227,9 +249,10 @@ export function GardenClientPage({ pots, tasks: _tasks, todayRecordedIds, commun
         {/* Row 2 — full-width segmented control */}
         <div style={{ marginBottom: 12 }}>
           <SegmentedControl
+            /* handleSegmentChange gates My Garden for guests */
             options={['Community', 'My Garden']}
             value={segment}
-            onChange={(v) => setSegment(v as 'Community' | 'My Garden')}
+            onChange={handleSegmentChange}
             label="Garden view"
           />
         </div>
@@ -319,5 +342,6 @@ export function GardenClientPage({ pots, tasks: _tasks, todayRecordedIds, commun
         }}
       />
     </div>
+    </>
   )
 }

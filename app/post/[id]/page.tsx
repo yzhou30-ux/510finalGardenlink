@@ -3,9 +3,11 @@ export const dynamic = 'force-dynamic'
 
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { IconArrowLeft, IconHeart, IconMessageCircle } from '@tabler/icons-react'
+import { IconArrowLeft } from '@tabler/icons-react'
 import { getRecordById, getPotById, getCommentsByRecord } from '@/lib/queries'
+import { getServerUser } from '@/lib/auth'
 import { CommentForm } from '@/components/CommentForm'
+import { PostInteractions } from './PostInteractions'
 
 interface PageProps {
   params: { id: string }
@@ -44,10 +46,12 @@ export default async function PostDetailPage({ params }: PageProps) {
   const record = await getRecordById(params.id)
   if (!record) notFound()
 
-  const [pot, comments] = await Promise.all([
+  const [pot, comments, user] = await Promise.all([
     getPotById(record.pot_id),
     getCommentsByRecord(record.id),
+    getServerUser(),
   ])
+  const isAuthenticated = !!user
 
   const potName = pot?.name ?? 'Unknown pot'
 
@@ -59,6 +63,7 @@ export default async function PostDetailPage({ params }: PageProps) {
       background: 'var(--bg-base)',
       fontFamily: 'var(--font-sans)',
       paddingBottom: 100,
+      overflow: 'hidden',   // prevent image from leaking outside the 480px boundary
     }}>
       {/* ── Sticky header ──────────────────────────────────────────────────── */}
       <div style={{
@@ -96,20 +101,28 @@ export default async function PostDetailPage({ params }: PageProps) {
 
       {/* ── Cover photo ────────────────────────────────────────────────────── */}
       {record.image_url && (
-        /* eslint-disable-next-line @next/next/no-img-element */
-        <img
-          src={record.image_url}
-          alt={record.caption ?? `${potName} on ${record.record_date}`}
-          style={{
-            width: '100%',
-            maxHeight: 340,
-            objectFit: 'cover',
-            display: 'block',
-          }}
-        />
+        // Wrapper div prevents the img from ever overflowing on tablet/iPad:
+        // 'overflow: hidden' clips the image; max-width: 100% ensures it never
+        // escapes its parent's maxWidth: 480 boundary.
+        <div style={{ overflow: 'hidden', maxHeight: 340, width: '100%', maxWidth: '100%', display: 'block' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={record.image_url}
+            alt={record.caption ?? `${potName} on ${record.record_date}`}
+            style={{
+              width: '100%',
+              maxWidth: '100%',
+              height: 340,
+              objectFit: 'cover',
+              display: 'block',
+            }}
+          />
+        </div>
       )}
 
       {/* ── Main card ──────────────────────────────────────────────────────── */}
+      {/* position: relative + zIndex: 1 ensures the card stacks above the image
+          on all viewport widths (the -20px marginTop creates intentional overlap) */}
       <div style={{
         margin: '0 16px',
         marginTop: record.image_url ? -20 : 16,
@@ -118,6 +131,8 @@ export default async function PostDetailPage({ params }: PageProps) {
         borderRadius: 14,
         padding: '16px',
         boxShadow: 'var(--shadow-card-focus)',
+        position: 'relative',
+        zIndex: 1,
       }}>
         {/* Pot name + date row */}
         <div style={{
@@ -151,26 +166,13 @@ export default async function PostDetailPage({ params }: PageProps) {
           </div>
         )}
 
-        {/* Interaction row */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 16,
-          paddingTop: 12,
-          borderTop: '0.5px solid var(--border-subtle)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--sage-400)' }}>
-            <IconHeart size={15} strokeWidth={1.6} />
-            <span style={{ fontSize: 12 }}>
-              {/* Demo like count — not persisted */}
-              {3 + ((record.id.charCodeAt(0) ?? 0) % 9)}
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--sage-400)' }}>
-            <IconMessageCircle size={15} strokeWidth={1.6} />
-            <span style={{ fontSize: 12 }}>
-              {comments.length} {comments.length === 1 ? 'comment' : 'comments'}
-            </span>
-          </div>
-        </div>
+        {/* Interaction row — client component handles auth gate */}
+        <PostInteractions
+          recordId={record.id}
+          likeCount={3 + ((record.id.charCodeAt(0) ?? 0) % 9)}
+          commentCount={comments.length}
+          isAuthenticated={isAuthenticated}
+        />
       </div>
 
       {/* ── Comments section ───────────────────────────────────────────────── */}
@@ -180,6 +182,8 @@ export default async function PostDetailPage({ params }: PageProps) {
         border: '0.5px solid var(--border-default)',
         borderRadius: 14,
         padding: '16px',
+        position: 'relative',
+        zIndex: 1,
       }}>
         <h2 style={{
           fontSize: 14, fontWeight: 600,
@@ -230,11 +234,9 @@ export default async function PostDetailPage({ params }: PageProps) {
           </ul>
         )}
 
-        {/* Comment input */}
+        {/* Comment input — passes isAuthenticated so PostInteractions can gate it */}
         <div style={{ marginTop: comments.length > 0 ? 12 : 0 }}>
-          <div style={{
-            display: 'flex', gap: 10, alignItems: 'flex-start',
-          }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
             <div style={{
               width: 32, height: 32, borderRadius: '50%',
               background: 'var(--glass-sage-medium)',
@@ -244,7 +246,7 @@ export default async function PostDetailPage({ params }: PageProps) {
               🏡
             </div>
             <div style={{ flex: 1 }}>
-              <CommentForm recordId={record.id} />
+              <CommentForm recordId={record.id} isAuthenticated={isAuthenticated} />
             </div>
           </div>
         </div>
