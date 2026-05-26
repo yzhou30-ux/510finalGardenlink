@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { IconPhoto, IconSettings, IconChevronRight, IconLogout } from '@tabler/icons-react'
+import { IconPhoto, IconSettings, IconChevronRight } from '@tabler/icons-react'
+import { SignOutButton } from '@/components/SignOutButton'
 import { MessageCard } from '@/components/MessageCard'
 import { getServerUser, getServerDisplayName } from '@/lib/auth'
 import {
@@ -49,18 +50,7 @@ export default async function ProfilePage() {
         <h1 style={{ fontSize: 18, fontWeight: 600, color: 'var(--sage-900)', margin: 0, lineHeight: 1.2 }}>
           Profile
         </h1>
-        {user && (
-          <form action="/auth/signout" method="post">
-            <button type="submit" style={{
-              display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px',
-              background: 'none', border: '0.5px solid var(--border-subtle)',
-              borderRadius: 8, cursor: 'pointer', fontSize: 11, color: 'var(--sage-400)',
-              fontFamily: 'var(--font-sans)',
-            }}>
-              <IconLogout size={13} strokeWidth={1.75} /> Sign out
-            </button>
-          </form>
-        )}
+        {user && <SignOutButton />}
       </div>
 
       {/* Avatar + Name + Bio */}
