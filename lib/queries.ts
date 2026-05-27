@@ -1,6 +1,7 @@
 // lib/queries.ts — Supabase query helpers（Server Components 用）
 import { supabase } from './supabase'
 import type { Pot, DailyRecord, Task, DailyComment, Message, Profile } from './types'
+import type { CommunityMember } from './gardenLayout'
 
 // A published post joined with its pot's display info
 export type PostWithPot = DailyRecord & { pot_name: string; pot_icon: string }
@@ -459,4 +460,133 @@ export async function getCommunityPosts(limit = 30): Promise<PostWithPot[]> {
     pot_name: row.pots?.name ?? 'Unknown',
     pot_icon: row.pots?.icon ?? '🪴',
   }))
+}
+
+// ─── Community layout helpers ─────────────────────────────────────────────────
+
+/** Relative time label for feed cards — e.g. "3h ago", "2d ago". */
+function formatTimeAgo(isoDate: string): string {
+  const seconds = (Date.now() - new Date(isoDate).getTime()) / 1000
+  if (seconds < 60)    return 'just now'
+  if (seconds < 3600)  return `${Math.floor(seconds / 60)}m ago`
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
+  return `${Math.floor(seconds / 86400)}d ago`
+}
+
+/** Row shape returned by the latestPosts query. */
+type LatestPostRow = {
+  user_id: string
+  caption: string | null
+  image_url: string | null
+  created_at: string
+  post_category: string | null
+}
+
+/** Row shape returned by the profiles query (with city). */
+type ProfileRow = {
+  user_id: string
+  display_name: string
+  avatar_emoji: string
+  city: string | null
+}
+
+/**
+ * Fetch all community members (every user except the caller) with
+ * follow-relationship flags, plant lists, and latest post data.
+ * Returned array is ready for computeGardenLayout().
+ */
+export async function getCommunityMembers(
+  currentUserId: string,
+): Promise<CommunityMember[]> {
+  // 1. Who do I follow?  (follows table may not exist yet → degrade gracefully)
+  let followingIds = new Set<string>()
+  let followerIds  = new Set<string>()
+  try {
+    const [myFollows, myFollowers] = await Promise.all([
+      supabase.from('follows').select('following_id').eq('follower_id', currentUserId),
+      supabase.from('follows').select('follower_id').eq('following_id', currentUserId),
+    ])
+    followingIds = new Set((myFollows.data ?? []).map((f: { following_id: string }) => f.following_id))
+    followerIds  = new Set((myFollowers.data ?? []).map((f: { follower_id: string }) => f.follower_id))
+  } catch {
+    // follows table not yet created — proceed without relationship data
+  }
+
+  // 2. All profiles except mine
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('user_id, display_name, avatar_emoji, city')
+    .neq('user_id', currentUserId)
+
+  if (!profiles || profiles.length === 0) return []
+
+  const userIds = (profiles as ProfileRow[]).map(p => p.user_id)
+
+  // 3. Pots (plant names + creation timestamp) per user
+  const { data: allPots } = await supabase
+    .from('pots')
+    .select('user_id, name, created_at')
+    .in('user_id', userIds)
+
+  const potsByUser       = new Map<string, string[]>()
+  const earliestPotAt    = new Map<string, string>()  // oldest pot per user (newPot bubble)
+  ;(allPots ?? []).forEach((p: { user_id: string; name: string; created_at: string }) => {
+    // Plant names list
+    const list = potsByUser.get(p.user_id)
+    if (list) list.push(p.name)
+    else potsByUser.set(p.user_id, [p.name])
+    // Track earliest pot creation date
+    const existing = earliestPotAt.get(p.user_id)
+    if (!existing || p.created_at < existing) earliestPotAt.set(p.user_id, p.created_at)
+  })
+
+  // 4. Latest published post per user (only the most recent one per user)
+  const { data: latestPosts } = await supabase
+    .from('daily_records')
+    .select('user_id, caption, image_url, created_at, post_category')
+    .eq('has_post', true)
+    .in('user_id', userIds)
+    .order('created_at', { ascending: false })
+
+  const latestByUser = new Map<string, LatestPostRow>()
+  ;((latestPosts as LatestPostRow[]) ?? []).forEach(p => {
+    if (!latestByUser.has(p.user_id)) latestByUser.set(p.user_id, p)
+  })
+
+  // 5. Assemble CommunityMember[]
+  return (profiles as ProfileRow[]).map(profile => {
+    const latest = latestByUser.get(profile.user_id)
+    return {
+      userId:             profile.user_id,
+      displayName:        profile.display_name,
+      avatarEmoji:        profile.avatar_emoji,
+      city:               profile.city ?? '',
+      plants:             potsByUser.get(profile.user_id) ?? [],
+      latestPostText:     latest?.caption ?? undefined,
+      latestPostTimeAgo:  latest ? formatTimeAgo(latest.created_at) : undefined,
+      latestPostImageUrl: latest?.image_url ?? undefined,
+      latestPostCategory: latest?.post_category ?? undefined,
+      latestPostDate:     latest?.created_at ?? undefined,
+      lastActiveAt:       latest?.created_at ?? undefined,
+      potCreatedAt:       earliestPotAt.get(profile.user_id) ?? undefined,
+      isFollowedByMe:     followingIds.has(profile.user_id),
+      followsMe:          followerIds.has(profile.user_id),
+    }
+  })
+}
+
+/**
+ * Get the current user's city and plant names for affinity layout configuration.
+ */
+export async function getMyLayoutConfig(
+  currentUserId: string,
+): Promise<{ myCity: string; myPlants: string[] }> {
+  const [profileRes, potsRes] = await Promise.all([
+    supabase.from('profiles').select('city').eq('user_id', currentUserId).single(),
+    supabase.from('pots').select('name').eq('user_id', currentUserId),
+  ])
+  return {
+    myCity:   (profileRes.data as { city: string | null } | null)?.city ?? '',
+    myPlants: ((potsRes.data ?? []) as { name: string }[]).map(p => p.name),
+  }
 }

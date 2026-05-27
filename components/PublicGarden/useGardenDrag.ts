@@ -37,6 +37,7 @@ export function useGardenDrag({
 }: UseGardenDragOptions): UseGardenDragResult {
   const offsetRef = useRef({ x: 0, y: 0 })
   const isDragging = useRef(false)
+  const isPointerDown = useRef(false)
   const startClientPos = useRef({ x: 0, y: 0 })
   const startOffset = useRef({ x: 0, y: 0 })
   const rafRef = useRef<number | undefined>(undefined)
@@ -121,6 +122,7 @@ export function useGardenDrag({
 
   const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     cancelSnap()
+    isPointerDown.current = true
     if (wheelDebounce.current) clearTimeout(wheelDebounce.current)
     isDragging.current = false
     startClientPos.current = { x: e.clientX, y: e.clientY }
@@ -129,6 +131,7 @@ export function useGardenDrag({
   }, [])
 
   const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isPointerDown.current) return
     const dx = e.clientX - startClientPos.current.x
     const dy = e.clientY - startClientPos.current.y
     if (
@@ -146,6 +149,7 @@ export function useGardenDrag({
   }, [])
 
   const onPointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    isPointerDown.current = false
     const wasDragging = isDragging.current
     isDragging.current = false
 
@@ -192,6 +196,7 @@ export function useGardenDrag({
   }, [snapToNearest])
 
   const onPointerCancel = useCallback((_e: React.PointerEvent<HTMLDivElement>) => {
+    isPointerDown.current = false
     isDragging.current = false
     snapToNearest() // cancelled drag → snap to nearest from current camera pos
   }, [snapToNearest])

@@ -143,6 +143,22 @@ export function PlantBubble({
       <div style={circleStyle}>
         {isAddButton ? (
           <IconPlus size={r * 0.55} color="rgba(139,158,137,0.6)" strokeWidth={1.5} />
+        ) : pot.illustrationUrl ? (
+          // PNG illustration — sized to fill most of the circle with a little breathing room
+          <img
+            src={pot.illustrationUrl}
+            alt=""
+            aria-hidden
+            style={{
+              width: r * 2.1,
+              height: r * 2.1,
+              objectFit: 'contain',
+              pointerEvents: 'none',
+              userSelect: 'none',
+              flexShrink: 0,
+              transform: `translateY(${r * 0.22}px)`,
+            }}
+          />
         ) : (
           <span style={{ fontSize: r * 0.6, lineHeight: 1, userSelect: 'none' }} aria-hidden>
             {pot.emoji}

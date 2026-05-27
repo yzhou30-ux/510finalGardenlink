@@ -3,7 +3,8 @@
 export interface PlantPot {
   id: string
   name: string
-  emoji: string               // placeholder — will be replaced by illustration
+  emoji: string               // fallback when no illustrationUrl
+  illustrationUrl?: string    // PNG asset from /public/illustrations/tiles/
   daysSinceStart: number      // days since first record / created
   recordedToday: boolean      // whether the user has logged today
   isArchived?: boolean

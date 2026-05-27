@@ -9,11 +9,13 @@ import { ViewToggle } from '@/components/ViewToggle'
 import { PublicGarden } from '@/components/PublicGarden'
 import { MyGarden } from '@/components/MyGarden'
 import { AddPotFlow } from '@/components/AddPot'
+import { EditPotModal } from '@/components/MyGarden'
 import type { PlantPot } from '@/components/MyGarden'
 import type { Pot, Task } from '@/lib/types'
 import type { PostWithPot } from '@/lib/queries'
 import type { GardenTile } from '@/components/PublicGarden/types'
 import { MY_TILE, DEMO_COMMUNITY_TILES } from '@/lib/communityDemoData'
+import { getBubbleIllustrationUrl } from '@/lib/tileIllustrations'
 import { AuthOverlay } from '@/components/AuthOverlay'
 
 // ── helpers ────────────────────────────────────────────────────────────────────
@@ -146,11 +148,16 @@ interface GardenClientPageProps {
   communityPosts: PostWithPot[]
   /** False when user is not logged in — used to gate My Garden access. */
   isAuthenticated: boolean
+  /**
+   * Pre-computed affinity layout tiles from the server.
+   * null = not logged in or layout failed → fall back to demo tiles in map mode.
+   */
+  computedTiles: GardenTile[] | null
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export function GardenClientPage({ pots, tasks: _tasks, todayRecordedIds, communityPosts, isAuthenticated }: GardenClientPageProps) {
+export function GardenClientPage({ pots, tasks: _tasks, todayRecordedIds, communityPosts, isAuthenticated, computedTiles }: GardenClientPageProps) {
   const router = useRouter()
 
   // ── State ─────────────────────────────────────────────────────────────────
@@ -158,6 +165,7 @@ export function GardenClientPage({ pots, tasks: _tasks, todayRecordedIds, commun
   const [communityView, setCommunityView] = useState<'map' | 'feed'>('map')
   const [gardenView, setGardenView]     = useState<'grid' | 'list'>('grid')
   const [showAddPot, setShowAddPot]     = useState(false)
+  const [editPot,   setEditPot]         = useState<PlantPot | null>(null)
   const [showAuthOverlay, setShowAuthOverlay] = useState(false)
   const [helpFilter, setHelpFilter]     = useState(false)
 
@@ -178,6 +186,7 @@ export function GardenClientPage({ pots, tasks: _tasks, todayRecordedIds, commun
     id: pot.id,
     name: pot.name,
     emoji: potEmoji(pot),
+    illustrationUrl: getBubbleIllustrationUrl(pot.name),
     daysSinceStart: pot.days_owned,
     recordedToday: recordedSet.has(pot.id),
   }))
@@ -193,19 +202,22 @@ export function GardenClientPage({ pots, tasks: _tasks, todayRecordedIds, commun
     { value: 'list', label: 'List', icon: <IconList       size={12} strokeWidth={1.75} /> },
   ], [])
 
-  // ── Community tiles: real posts → optional help filter → demo fallback ────
+  // ── Community tiles ────────────────────────────────────────────────────────
+  // Map mode:  server-computed affinity layout → demo fallback (not logged in / no members)
+  // Feed mode: real published posts with optional help filter → demo fallback (no posts)
   const communityTiles = useMemo(() => {
-    // Map mode always uses the fixed demo layout
-    if (communityView !== 'feed' || communityPosts.length === 0) return DEMO_COMMUNITY_TILES
+    if (communityView === 'map') {
+      return computedTiles ?? DEMO_COMMUNITY_TILES
+    }
+    // Feed mode
+    if (communityPosts.length === 0) return DEMO_COMMUNITY_TILES
     const filtered = helpFilter
       ? communityPosts.filter(p => p.post_category === 'help')
       : communityPosts
-    // If help filter is active but there are no help posts, return empty
-    // (empty array signals the overlay to show instead of demo tiles)
     return filtered.map(postToTile)
-  }, [communityView, communityPosts, helpFilter])
+  }, [communityView, communityPosts, helpFilter, computedTiles])
 
-  // Show an empty-state overlay when the help filter returns 0 real posts
+  // Show empty-state overlay when help filter is on but yields no feed results
   const showHelpEmpty =
     helpFilter &&
     communityView === 'feed' &&
@@ -351,7 +363,7 @@ export function GardenClientPage({ pots, tasks: _tasks, todayRecordedIds, commun
               pots={myGardenPots}
               onPotTap={(pot) => router.push(`/timeline?pot=${encodeURIComponent(pot.id)}`)}
               onAddPot={() => setShowAddPot(true)}
-              onEditPot={(pot) => console.log('edit', pot.id)}
+              onEditPot={(pot) => setEditPot(pot)}
               onRenamePot={(pot) => console.log('rename', pot.id)}
               onArchivePot={(pot) => console.log('archive', pot.id)}
             />
@@ -399,6 +411,13 @@ export function GardenClientPage({ pots, tasks: _tasks, todayRecordedIds, commun
           router.refresh()
           // Keep modal open — success screen shows inside the flow
         }}
+      />
+
+      {/* ── EditPot modal ─────────────────────────────────────────────────── */}
+      <EditPotModal
+        pot={editPot}
+        onClose={() => setEditPot(null)}
+        onSaved={() => { setEditPot(null); router.refresh() }}
       />
     </div>
     </>

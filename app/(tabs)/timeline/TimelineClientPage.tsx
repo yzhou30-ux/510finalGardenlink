@@ -27,7 +27,10 @@ function groupRecordsByDate(records: DailyRecord[]): CardData[] {
     }
   }
 
-  // Convert each group to a CardData, then sort descending by date
+  // Convert each group to a CardData, then sort ascending by date.
+  // Oldest record = index 0 (top of deck); newest = last index (bottom of deck).
+  // The CardDeck starts focused on the last card so the user sees today first
+  // and scrolls UP to revisit growth history — like reading a diary.
   return Array.from(byDate.entries())
     .map(([dateStr, group]) => {
       // Sort within the group: newest created_at first
@@ -42,6 +45,7 @@ function groupRecordsByDate(records: DailyRecord[]): CardData[] {
         coverImageUrl: latest.image_url ?? undefined,
         caption:      latest.caption ?? undefined,
         tags:         latest.tags ?? undefined,
+        detectedTags: latest.tags ?? undefined,   // same source; ML pipeline will split these later
         hasPost:      sorted.some(r => r.has_post),
         allRecords:   sorted.map(r => ({
           id:        r.id,
@@ -52,7 +56,7 @@ function groupRecordsByDate(records: DailyRecord[]): CardData[] {
         })),
       } satisfies CardData
     })
-    .sort((a, b) => b.date.getTime() - a.date.getTime())
+    .sort((a, b) => a.date.getTime() - b.date.getTime())  // ascending: oldest → newest
 }
 
 // ── Feed list ─────────────────────────────────────────────────────────────────
@@ -186,7 +190,7 @@ export function TimelineClientPage({ pots, records, selectedPotId }: Props) {
           <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
             <CardDeck
               cards={cards}
-              initialIndex={0}
+              initialIndex={Math.max(0, cards.length - 1)}
               onActiveChange={() => {}}
               onMarkPost={handleMarkPost}
               onTagClick={() => {}}

@@ -222,8 +222,8 @@ export function CardItem({
           )}
         </div>
 
-        {/* Bottom row (tags, focused only) */}
-        {isFocused && card.tags && card.tags.length > 0 && (
+        {/* Bottom row — detected tags, focused card only, max 3 */}
+        {isFocused && card.detectedTags && card.detectedTags.length > 0 && (
           <div
             style={{
               display: 'flex',
@@ -232,7 +232,7 @@ export function CardItem({
               justifyContent: 'flex-end',
             }}
           >
-            {card.tags.map((tag) => (
+            {card.detectedTags.slice(0, 3).map((tag) => (
               <button
                 key={tag}
                 onPointerDown={(e) => e.stopPropagation()}

@@ -3,6 +3,7 @@
 // Imported by both GardenClientPage (canvas) and /post/community/[id] (detail page).
 
 import type { GardenTile } from '@/components/PublicGarden/types'
+import { getTileIllustrationUrl, getMeIllustrationUrl } from '@/lib/tileIllustrations'
 
 export const MY_TILE: GardenTile = {
   id: 'me',
@@ -11,6 +12,7 @@ export const MY_TILE: GardenTile = {
   emoji: '🏡',
   tags: [],
   isMe: true,
+  illustrationUrl: getMeIllustrationUrl(),
 }
 
 export const DEMO_COMMUNITY_TILES: GardenTile[] = [
@@ -19,29 +21,36 @@ export const DEMO_COMMUNITY_TILES: GardenTile[] = [
     userName: 'Flora', emoji: '🌹',
     tags: [{ type: 'social', label: 'Following' }, { type: 'plant', label: 'Rose' }],
     latestPost: { text: 'My first rose bloom of the season — so thrilled!', timeAgo: '3h ago' },
+    illustrationUrl: getTileIllustrationUrl('Rose'),
+    statusBubble: { type: 'bloom', label: 'Bloom' },
   },
   {
     id: '2', dx: 1.8, dy: -1.8,
     userName: 'GreenThumb', emoji: '🌿',
     tags: [{ type: 'geo', label: 'Nearby' }, { type: 'plant', label: 'Pothos' }],
     latestPost: { text: 'Pothos is so low-maintenance — perfect for beginners', timeAgo: '1d ago' },
+    illustrationUrl: getTileIllustrationUrl('Pothos'),
   },
   {
     id: '3', dx: 0, dy: -2.8,
     userName: 'SuccyCat', emoji: '🌵',
     tags: [{ type: 'plant', label: 'Succulent' }],
     latestPost: { text: 'New succulent haul — the whole windowsill is full now', timeAgo: '2d ago' },
+    illustrationUrl: getTileIllustrationUrl('Succulent'),
   },
   {
     id: '4', dx: -2.8, dy: 0,
     userName: 'JasmineG', emoji: '🌸',
     tags: [{ type: 'geo', label: 'Same block' }, { type: 'plant', label: 'Jasmine' }],
     latestPost: { text: 'Jasmine is in full bloom — the scent drifts all the way outside', timeAgo: '2h ago' },
+    illustrationUrl: getTileIllustrationUrl('Jasmine'),
+    statusBubble: { type: 'new', label: 'New' },
   },
   {
     id: '5', dx: 2.8, dy: 0,
     userName: 'CactusKing', emoji: '🎋',
     tags: [{ type: 'plant', label: 'Cactus' }],
+    statusBubble: { type: 'newPot', label: 'New pot' },
   },
   {
     id: '6', dx: 0, dy: 2.8,
@@ -54,12 +63,14 @@ export const DEMO_COMMUNITY_TILES: GardenTile[] = [
     userName: 'GardenPro', emoji: '🌼',
     tags: [{ type: 'geo', label: 'Same district' }],
     latestPost: { text: 'Sharing my planting plan for this year', timeAgo: '3d ago' },
+    statusBubble: { type: 'help', label: 'Help' },
   },
   {
     id: '8', dx: 1.8, dy: 1.8,
     userName: 'Sunny', emoji: '🌻',
     tags: [{ type: 'plant', label: 'Sunflower' }],
     latestPost: { text: 'Sunflower is finally 2 metres tall!', timeAgo: '1d ago' },
+    illustrationUrl: getTileIllustrationUrl('Sunflower'),
   },
   {
     id: 'event-1', dx: 3.6, dy: -1.8,
