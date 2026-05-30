@@ -49,7 +49,7 @@ export function MyGarden({
         display: 'flex',
         alignItems: 'baseline',
         justifyContent: 'space-between',
-        padding: '0 0 12px',
+        padding: '0 0 6px',
         flexShrink: 0,
       }}>
         <span style={{

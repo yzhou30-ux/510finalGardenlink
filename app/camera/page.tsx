@@ -50,7 +50,15 @@ function potEmoji(name: string): string {
   return '🪴'
 }
 
-type UploadStatus = 'idle' | 'uploading' | 'done' | 'error'
+type UploadStatus = 'idle' | 'identifying' | 'uploading' | 'done' | 'error'
+
+type PlantIdentification = {
+  speciesName: string
+  genus: string
+  family: string
+  commonNames: string[]
+  score: number
+}
 
 // Inner component holds all logic that calls useSearchParams()
 // Must be wrapped in <Suspense> to satisfy Next.js 14 static-render requirements
@@ -71,6 +79,10 @@ function CameraPageInner() {
   const [publishPost, setPublish] = useState(false)
   const [status, setStatus]       = useState<UploadStatus>('idle')
   const [errorMsg, setErrorMsg]   = useState('')
+  // PlantNet identification result (null = not yet identified / identification failed)
+  const [plantId, setPlantId]     = useState<PlantIdentification | null>(null)
+  // Counter guards against a stale identification overwriting state for a newer image
+  const identifyCounterRef        = useRef(0)
 
   // Load user + their pots on mount — all via authenticated browser client
   useEffect(() => {
@@ -96,14 +108,34 @@ function CameraPageInner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files?.[0]
     if (!selected) return
     setFile(selected)
     if (preview) URL.revokeObjectURL(preview)
     setPreview(URL.createObjectURL(selected))
-    setStatus('idle')
+    setStatus('identifying')
     setErrorMsg('')
+    setPlantId(null)
+
+    // Tag this call so a result from a previous (slower) identify never overwrites
+    // the result for the image the user is currently looking at.
+    const myCount = ++identifyCounterRef.current
+
+    const formData = new FormData()
+    formData.append('image', selected)
+    try {
+      const res  = await fetch('/api/identify', { method: 'POST', body: formData })
+      const data = await res.json()
+      if (myCount === identifyCounterRef.current && data.success) {
+        setPlantId(data.result as PlantIdentification)
+      }
+    } catch {
+      // identification failure is always silent — never blocks upload
+    }
+    if (myCount === identifyCounterRef.current) {
+      setStatus('idle')
+    }
   }
 
   async function handleUpload() {
@@ -161,10 +193,35 @@ function CameraPageInner() {
           image_url:   publicUrl,
           ...(caption.trim() && { caption: caption.trim() }),
           has_post:    publishPost,
+          // PlantNet identification fields (only when identification succeeded)
+          ...(plantId && {
+            species_name:   plantId.speciesName,
+            genus:          plantId.genus,
+            family:         plantId.family,
+            plantnet_score: plantId.score,
+            tags: [
+              plantId.genus,
+              ...(plantId.commonNames.length > 0 ? [plantId.commonNames[0]] : []),
+            ],
+          }),
         })
       if (dbErr) throw new Error(dbErr.message)
 
       setStatus('done')
+
+      // ── Back-fill pots.genus ──────────────────────────────────────────────
+      // Write genus / family to the pot on first confident identification only.
+      // .is('genus', null) prevents overwriting a prior high-confidence result.
+      // Fire-and-forget: we do not await this so the redirect is not delayed.
+      if (plantId && plantId.score >= 0.5) {
+        supabase
+          .from('pots')
+          .update({ genus: plantId.genus, family: plantId.family })
+          .eq('id', potId)
+          .is('genus', null)
+          .then()   // intentionally not awaited
+      }
+
       setTimeout(() => {
         router.push(`/timeline?pot=${encodeURIComponent(potId)}`)
       }, 1200)
@@ -261,7 +318,7 @@ function CameraPageInner() {
             <div style={{ position: 'relative', width: '100%', borderRadius: 12, overflow: 'hidden', marginBottom: 10 }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={preview} alt="Preview" style={{ width: '100%', display: 'block', maxHeight: 280, objectFit: 'cover' }} />
-              <button onClick={() => { setFile(null); setPreview(null) }}
+              <button onClick={() => { setFile(null); setPreview(null); setPlantId(null) }}
                 style={{
                   position: 'absolute', top: 8, right: 8,
                   width: 28, height: 28, borderRadius: '50%',
@@ -317,6 +374,45 @@ function CameraPageInner() {
             </button>
           </div>
         </div>
+
+        {/* ── Plant identification result ───────────────────────────────── */}
+        {status === 'identifying' && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '10px 14px', borderRadius: 10,
+            background: 'var(--glass-sage-subtle)',
+            border: '0.5px solid var(--border-subtle)',
+          }}>
+            <IconLoader2 size={14} strokeWidth={2}
+              style={{ animation: 'spin 0.8s linear infinite', color: 'var(--sage-400)', flexShrink: 0 }} />
+            <span style={{ fontSize: 12, color: 'var(--sage-400)' }}>Identifying plant…</span>
+          </div>
+        )}
+
+        {plantId && status !== 'identifying' && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '10px 14px', borderRadius: 10,
+            background: plantId.score >= 0.7
+              ? 'rgba(107,158,107,0.12)'
+              : 'var(--glass-sage-subtle)',
+            border: `0.5px solid ${plantId.score >= 0.7
+              ? 'rgba(107,158,107,0.30)'
+              : 'var(--border-subtle)'}`,
+          }}>
+            <span style={{ fontSize: 15, lineHeight: 1, flexShrink: 0 }}>🌿</span>
+            <span style={{
+              fontSize: 12, fontWeight: 500,
+              color: plantId.score >= 0.7 ? 'var(--success)' : 'var(--sage-500)',
+            }}>
+              {plantId.genus}
+              {plantId.commonNames[0] ? ` · ${plantId.commonNames[0]}` : ''}
+              {plantId.score < 0.7 && (
+                <span style={{ fontWeight: 400, color: 'var(--sage-300)' }}> (uncertain)</span>
+              )}
+            </span>
+          </div>
+        )}
 
         {/* ── Caption ───────────────────────────────────────────────────── */}
         <div>

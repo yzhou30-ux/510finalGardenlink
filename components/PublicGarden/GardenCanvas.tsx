@@ -55,13 +55,83 @@ function drawTileIllustration(
   ctx.drawImage(img, sx - imgW / 2 + sway, drawY + bob, imgW, imgH)
 }
 
-// ── Thought-bubble colours (Animal Crossing style: soft pastel, icon-only) ─────
-const BUBBLE_CONFIG = {
-  help:   { bg: 'rgba(220,180,140,0.87)', shadow: 'rgba(196,147,90,0.30)',   icon: '🆘' },
-  bloom:  { bg: 'rgba(235,180,180,0.87)', shadow: 'rgba(200,110,140,0.30)',  icon: '🌸' },
-  new:    { bg: 'rgba(180,210,180,0.87)', shadow: 'rgba(107,158,107,0.30)',  icon: '✨' },
-  newPot: { bg: 'rgba(170,215,175,0.87)', shadow: 'rgba(130,180,140,0.30)', icon: '🌱' },
-} as const
+// ── Thought-bubble colours + Tabler icon SVG paths (Animal Crossing style: soft pastel) ──
+// Icon SVG paths use the standard 24×24 Tabler viewBox.
+// Path2D accepts these strings directly — no async image loading needed.
+interface BubbleConfig {
+  bg: string
+  shadow: string
+  iconColor: string
+  paths: string[]   // one or more SVG <path d="…"> strings
+}
+
+const BUBBLE_CONFIG: Record<'help' | 'bloom' | 'new' | 'newPot', BubbleConfig> = {
+  // IconHelpCircle
+  help: {
+    bg: 'rgba(220,180,140,0.87)', shadow: 'rgba(196,147,90,0.30)',
+    iconColor: 'rgba(150,90,30,0.85)',
+    paths: [
+      'M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0',
+      'M12 16v.01',
+      'M12 13a2 2 0 0 0 .914 -3.782a1.98 1.98 0 0 0 -2.414 .483',
+    ],
+  },
+  // IconFlower
+  bloom: {
+    bg: 'rgba(235,180,180,0.87)', shadow: 'rgba(200,110,140,0.30)',
+    iconColor: 'rgba(180,60,80,0.85)',
+    paths: [
+      'M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0',
+      'M12 2a3 3 0 0 1 3 3c0 .562 -.259 1.442 -.776 2.64l-.724 1.36l1.76 -1.893c.499 -.6 .922 -1 1.27 -1.205a2.968 2.968 0 0 1 4.07 1.099a3.011 3.011 0 0 1 -1.09 4.098c-.374 .217 -.99 .396 -1.846 .535l-2.664 .366l2.4 .326c1 .145 1.698 .337 2.11 .576a3.011 3.011 0 0 1 1.09 4.098a2.968 2.968 0 0 1 -4.07 1.098c-.348 -.202 -.771 -.604 -1.27 -1.205l-1.76 -1.893l.724 1.36c.516 1.199 .776 2.079 .776 2.64a3 3 0 0 1 -6 0c0 -.562 .259 -1.442 .776 -2.64l.724 -1.36l-1.76 1.893c-.499 .601 -.922 1 -1.27 1.205a2.968 2.968 0 0 1 -4.07 -1.098a3.011 3.011 0 0 1 1.09 -4.098c.374 -.218 .99 -.396 1.846 -.536l2.664 -.366l-2.4 -.325c-1 -.145 -1.698 -.337 -2.11 -.576a3.011 3.011 0 0 1 -1.09 -4.099a2.968 2.968 0 0 1 4.07 -1.099c.348 .203 .771 .604 1.27 1.205l1.76 1.894c-1 -2.292 -1.5 -3.625 -1.5 -4a3 3 0 0 1 3 -3',
+    ],
+  },
+  // IconSparkles
+  new: {
+    bg: 'rgba(180,210,180,0.87)', shadow: 'rgba(107,158,107,0.30)',
+    iconColor: 'rgba(50,120,60,0.85)',
+    paths: [
+      'M16 18a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2m0 -12a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2m-7 12a6 6 0 0 1 6 -6a6 6 0 0 1 -6 -6a6 6 0 0 1 -6 6a6 6 0 0 1 6 6',
+    ],
+  },
+  // IconPlant
+  newPot: {
+    bg: 'rgba(170,215,175,0.87)', shadow: 'rgba(130,180,140,0.30)',
+    iconColor: 'rgba(50,120,60,0.85)',
+    paths: [
+      'M7 15h10v4a2 2 0 0 1 -2 2h-6a2 2 0 0 1 -2 -2v-4',
+      'M12 9a6 6 0 0 0 -6 -6h-3v2a6 6 0 0 0 6 6h3',
+      'M12 11a6 6 0 0 1 6 -6h3v1a6 6 0 0 1 -6 6h-3',
+      'M12 15l0 -6',
+    ],
+  },
+}
+
+/**
+ * Draw a Tabler icon (24×24 viewBox) centred at (cx, cy), scaled to `size` px.
+ * Path2D accepts SVG path strings synchronously — no image loading required.
+ * Caller must reset shadow to transparent BEFORE calling this function.
+ */
+function drawIconInBubble(
+  ctx: CanvasRenderingContext2D,
+  paths: string[],
+  cx: number,
+  cy: number,
+  size: number,
+  color: string,
+) {
+  const scale = size / 24
+  ctx.save()
+  ctx.translate(cx - size / 2, cy - size / 2)
+  ctx.scale(scale, scale)
+  ctx.strokeStyle  = color
+  ctx.lineWidth    = 1.5 / scale   // keep apparent stroke weight constant at any scale
+  ctx.lineCap      = 'round'
+  ctx.lineJoin     = 'round'
+  for (const d of paths) {
+    ctx.stroke(new Path2D(d))
+  }
+  ctx.restore()
+}
 
 /**
  * Draw an Animal Crossing–style thought bubble (rounded pill + downward tail) above a tile.
@@ -79,15 +149,15 @@ function drawStatusBubble(
   alpha: number,
   floatY = 0,
 ) {
-  const { bg, shadow, icon } = BUBBLE_CONFIG[type]
+  const { bg, shadow, paths, iconColor } = BUBBLE_CONFIG[type]
 
-  // Geometry — stadium pill (r = pillH/2) with a centred downward tail
-  const pillW  = 28
-  const pillH  = 20
-  const r      = 10   // = pillH/2 → fully rounded ends
-  const tailW  = 6    // tail base (fits within 8px flat bottom: cx±3 inside cx±4 corners)
-  const tailH  = 6
-  const gap    = 4    // px between tail tip and topY
+  // Geometry — enlarged stadium pill (r = pillH/2) with a centred downward tail
+  const pillW  = 44
+  const pillH  = 28
+  const r      = 14   // = pillH/2 → fully rounded ends
+  const tailW  = 8    // tail base (cx±4 fits comfortably within flat bottom cx±8 corners)
+  const tailH  = 8
+  const gap    = 8    // px between tail tip and topY
 
   // Positions (floatY shifts the whole bubble; positive = down, animation goes negative)
   const tailTipY    = topY - gap + floatY
@@ -100,7 +170,7 @@ function drawStatusBubble(
 
   // Drop shadow (drawn before path; not applied to icon)
   ctx.shadowColor   = shadow
-  ctx.shadowBlur    = 6
+  ctx.shadowBlur    = 8
   ctx.shadowOffsetY = 2
 
   // ── Thought-bubble path: pill body + triangular tail ──
@@ -122,16 +192,13 @@ function drawStatusBubble(
   ctx.closePath()
   ctx.fill()
 
-  // Reset shadow so it does not bleed into the icon
+  // Reset shadow before drawing icon so the shadow doesn't bleed onto it
   ctx.shadowColor   = 'transparent'
   ctx.shadowBlur    = 0
   ctx.shadowOffsetY = 0
 
-  // ── Icon emoji centred in pill ──
-  ctx.font         = '11px serif'
-  ctx.textAlign    = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.fillText(icon, cx, py + pillH / 2)
+  // ── Tabler icon centred in pill (Path2D — synchronous, no async loading) ──
+  drawIconInBubble(ctx, paths, cx, py + pillH / 2, pillH - 8, iconColor)
 
   ctx.restore()
 }

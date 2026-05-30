@@ -93,6 +93,7 @@ export function PlantBubble({
     width: d,
     height: d,
     borderRadius: '50%',
+    overflow: 'hidden',   // clips illustration to circle boundary
     position: 'relative',
     // Breathe animation on inner circle (starts after entry)
     animation: isAddButton
@@ -139,24 +140,24 @@ export function PlantBubble({
       onContextMenu={(e) => e.preventDefault()}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onTap() }}
     >
-      {/* Circle */}
+      {/* Circle — overflow:hidden clips the illustration to the circular boundary */}
       <div style={circleStyle}>
         {isAddButton ? (
           <IconPlus size={r * 0.55} color="rgba(139,158,137,0.6)" strokeWidth={1.5} />
         ) : pot.illustrationUrl ? (
-          // PNG illustration — sized to fill most of the circle with a little breathing room
+          // PNG illustration — fills the circle; bias toward top so flower/leaves show,
+          // not just the pot base. overflow:hidden on circleStyle does the clipping.
           <img
             src={pot.illustrationUrl}
             alt=""
             aria-hidden
             style={{
-              width: r * 2.1,
-              height: r * 2.1,
-              objectFit: 'contain',
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              objectPosition: 'center 30%',
               pointerEvents: 'none',
               userSelect: 'none',
-              flexShrink: 0,
-              transform: `translateY(${r * 0.22}px)`,
             }}
           />
         ) : (
@@ -164,34 +165,37 @@ export function PlantBubble({
             {pot.emoji}
           </span>
         )}
-
-        {/* Unrecorded-today badge */}
-        {showBadge && (
-          <div
-            aria-hidden
-            style={{
-              position: 'absolute',
-              top: r * 0.08,
-              right: r * 0.08,
-              width: r * 0.42,
-              height: r * 0.42,
-              borderRadius: '50%',
-              background: 'rgba(196,147,90,0.18)',
-              border: '0.5px solid rgba(196,147,90,0.45)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              animation: 'badge-pulse 2.5s ease-in-out infinite',
-            }}
-          >
-            <IconCamera
-              size={r * 0.22}
-              color="#B8863A"
-              strokeWidth={1.8}
-            />
-          </div>
-        )}
       </div>
+
+      {/* Unrecorded-today badge — lives OUTSIDE the circle div so overflow:hidden
+          doesn't clip it. Positioned relative to the outer wrapper (same top-right
+          corner as the circle). z-index 10 keeps it above sibling content. */}
+      {showBadge && (
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            top: r * 0.05,
+            right: r * 0.05,
+            width: r * 0.42,
+            height: r * 0.42,
+            borderRadius: '50%',
+            background: 'rgba(196,147,90,0.18)',
+            border: '0.5px solid rgba(196,147,90,0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            animation: 'badge-pulse 2.5s ease-in-out infinite',
+            zIndex: 10,
+          }}
+        >
+          <IconCamera
+            size={r * 0.22}
+            color="#B8863A"
+            strokeWidth={1.8}
+          />
+        </div>
+      )}
 
       {/* Label (below circle) */}
       {!isAddButton && (

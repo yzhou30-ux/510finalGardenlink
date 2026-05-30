@@ -75,9 +75,10 @@ function computeLayout(
   const cy = containerH * 0.37
 
   // ── Reserve space for the fixed "+" button at bottom ──────────────────────
-  // Pot labels are ~r*0.85 below the circle; "+" button sits at bottom-20px.
-  // vPadBottom ensures no circle+label overlaps the button area.
-  const ADD_BUTTON_CLEARANCE = 80   // px from bottom to leave free for + button
+  // "+" button: bottom:20, height:56 → top edge at containerH - 76.
+  // vPadBottom = r*1.85 (circle+label height) + ADD_BUTTON_CLEARANCE must exceed 76
+  // so the lowest label clears the button top.  96px gives ~20px breathing room.
+  const ADD_BUTTON_CLEARANCE = 96   // px from bottom to leave free for + button
 
   const placed: Array<{ x: number; y: number; r: number }> = []
 
@@ -109,17 +110,17 @@ function computeLayout(
       y = cy + Math.sin(angle) * spiralR
     }
 
-    // ── Collision resolution — allows ~13% overlap between edges ─────────────
-    // Instead of pushing to r1+r2+gap (fully separated), we push only to
-    // (r1+r2)*0.87, letting edges visually interpenetrate a little.
-    const OVERLAP_FACTOR = 0.87  // 1 − 0.13
-    for (let iter = 0; iter < 60; iter++) {
+    // ── Collision resolution — clear gap between all circles ─────────────────
+    // MIN_GAP ensures no overlap: each circle must be at least MIN_GAP px from
+    // every other circle's edge. Do NOT use overlap factor here.
+    const MIN_GAP = 24  // px of breathing room between circle edges
+    for (let iter = 0; iter < 120; iter++) {
       let resolved = true
       for (const p of placed) {
         const dx   = x - p.x
         const dy   = y - p.y
         const dist = Math.sqrt(dx * dx + dy * dy)
-        const minDist = (r + p.r) * OVERLAP_FACTOR
+        const minDist = r + p.r + MIN_GAP
 
         if (dist < minDist) {
           resolved = false

@@ -7,12 +7,19 @@ import { getTileIllustrationUrl } from '@/lib/tileIllustrations'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
+/** One plant entry — name is required, botanical fields optional (populated via PlantNet). */
+export interface PlantEntry {
+  name: string
+  genus?: string | null
+  family?: string | null
+}
+
 export interface CommunityMember {
   userId: string
   displayName: string
   avatarEmoji: string
   city: string
-  plants: string[]            // pot names this user grows
+  plants: PlantEntry[]        // pots this user grows, with optional botanical data
   latestPostText?: string
   latestPostTimeAgo?: string
   latestPostImageUrl?: string
@@ -35,7 +42,7 @@ export interface CommunityEvent {
 
 export interface LayoutConfig {
   myCity: string
-  myPlants: string[]          // current user's pot names
+  myPlants: PlantEntry[]      // current user's pots, with optional botanical data
   weights?: {
     follow?: number           // default 0.30
     geo?: number              // default 0.25
@@ -94,12 +101,48 @@ function activityScore(lastActiveAt?: string): number {
   return 1 - days / ACTIVITY_WINDOW
 }
 
-/** Plant overlap ratio: |intersection| / max(|mine|, |theirs|). Range [0, 1]. */
-function plantOverlap(myPlants: string[], theirPlants: string[]): number {
+/**
+ * Tiered plant overlap score ∈ [0, 1].
+ *
+ * For each of my plants, find the best-matching plant in theirs:
+ *   genus match  → 1.0  (same species cluster)
+ *   family match → 0.3  (botanical cousins)
+ *   name match   → 0.5  (string equality fallback, e.g. demo data with no taxonomy)
+ *
+ * Total is divided by max(mine, theirs) so the score stays in [0, 1].
+ */
+function plantOverlap(myPlants: PlantEntry[], theirPlants: PlantEntry[]): number {
   if (myPlants.length === 0 || theirPlants.length === 0) return 0
-  const mine = new Set(myPlants.map(p => p.toLowerCase()))
-  const overlap = theirPlants.filter(p => mine.has(p.toLowerCase())).length
-  return overlap / Math.max(myPlants.length, theirPlants.length)
+  let totalScore = 0
+  const maxPairs = Math.max(myPlants.length, theirPlants.length)
+  const matched  = new Set<number>()
+
+  for (const mine of myPlants) {
+    let bestScore = 0
+    let bestIdx   = -1
+
+    for (let j = 0; j < theirPlants.length; j++) {
+      if (matched.has(j)) continue
+      const theirs = theirPlants[j]
+      let pairScore = 0
+
+      if (mine.genus && theirs.genus &&
+          mine.genus.toLowerCase() === theirs.genus.toLowerCase()) {
+        pairScore = 1.0
+      } else if (mine.family && theirs.family &&
+                 mine.family.toLowerCase() === theirs.family.toLowerCase()) {
+        pairScore = 0.3
+      } else if (mine.name.toLowerCase() === theirs.name.toLowerCase()) {
+        pairScore = 0.5
+      }
+
+      if (pairScore > bestScore) { bestScore = pairScore; bestIdx = j }
+    }
+
+    if (bestIdx >= 0) { matched.add(bestIdx); totalScore += bestScore }
+  }
+
+  return totalScore / maxPairs
 }
 
 // ── Main layout function ───────────────────────────────────────────────────────
@@ -114,9 +157,9 @@ export function computeGardenLayout(
   const spread = config.spread ?? 1.8
 
   // Pool of all plant names for stable angle assignment across the canvas
-  const allPlants = [
-    ...config.myPlants,
-    ...members.flatMap(m => m.plants),
+  const allPlantNames = [
+    ...config.myPlants.map(p => p.name),
+    ...members.flatMap(m => m.plants.map(p => p.name)),
   ]
 
   // ── Position each community member ─────────────────────────────────────────
@@ -135,8 +178,8 @@ export function computeGardenLayout(
     const distance = MIN_DISTANCE + (MAX_DISTANCE - MIN_DISTANCE) * (1 - affinity)
 
     // 3. Primary plant → angle sector + per-user jitter to prevent overlap
-    const primaryPlant = member.plants[0] ?? member.displayName
-    const angle = plantToAngle(primaryPlant, allPlants) + jitter(member.userId)
+    const primaryPlantName = member.plants[0]?.name ?? member.displayName
+    const angle = plantToAngle(primaryPlantName, allPlantNames) + jitter(member.userId)
 
     // 4. Polar → Cartesian, scaled by spread
     const dx = distance * Math.cos(angle) * spread
@@ -149,12 +192,12 @@ export function computeGardenLayout(
     if (member.city && member.city === config.myCity)
       tags.push({ type: 'geo', label: 'Nearby' })
     member.plants.forEach(plant => {
-      if (config.myPlants.map(p => p.toLowerCase()).includes(plant.toLowerCase()))
-        tags.push({ type: 'plant', label: plant })
+      if (config.myPlants.some(p => p.name.toLowerCase() === plant.name.toLowerCase()))
+        tags.push({ type: 'plant', label: plant.name })
     })
 
     // Pick illustration from primary plant; undefined = emoji fallback in canvas
-    const illustrationUrl = getTileIllustrationUrl(primaryPlant)
+    const illustrationUrl = getTileIllustrationUrl(primaryPlantName)
 
     // 6. Status bubble — most specific recent signal wins
     const ONE_DAY_MS = 86_400_000
@@ -203,7 +246,7 @@ export function computeGardenLayout(
     // Find which member tiles grow the event's related plant
     const cluster = memberTiles.filter((_, i) =>
       members[i].plants.some(
-        p => p.toLowerCase() === event.relatedPlant.toLowerCase(),
+        p => p.name.toLowerCase() === event.relatedPlant.toLowerCase(),
       ),
     )
 

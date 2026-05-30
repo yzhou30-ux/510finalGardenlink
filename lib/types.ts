@@ -16,6 +16,9 @@ export interface Pot {
   icon: string
   days_owned: number
   created_at: string
+  // PlantNet botanical classification (populated lazily on first confident identification)
+  genus: string | null
+  family: string | null
 }
 
 export type PostCategory = 'bloom' | 'harvest' | 'growth' | 'help'
@@ -33,6 +36,11 @@ export interface DailyRecord {
   post_category: PostCategory | null   // set when has_post=true (bloom/harvest/growth/help)
   record_date: string   // ISO date string "YYYY-MM-DD"
   created_at: string
+  // PlantNet botanical identification (null when not yet identified or below threshold)
+  species_name: string | null
+  genus: string | null
+  family: string | null
+  plantnet_score: number | null
 }
 
 export interface Task {
