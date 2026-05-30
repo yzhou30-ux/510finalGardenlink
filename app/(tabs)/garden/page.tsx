@@ -1,5 +1,6 @@
 // app/(tabs)/garden/page.tsx — Server Component wrapper
 import { getServerUser } from '@/lib/auth'
+import { createSupabaseServerClient } from '@/lib/supabase-server'
 import {
   getPotsForUser,
   getTasksByUser,
@@ -39,6 +40,27 @@ const COMMUNITY_EVENTS: CommunityEvent[] = [
 export default async function GardenPage() {
   const user   = await getServerUser()
   const userId = user?.id ?? null
+
+  // ── Lazy profile backfill ───────────────────────────────────────────────────
+  // Users who signed up before the auth/callback upsert was added have no
+  // profiles row yet. Run a no-op upsert on every page load so their display
+  // name appears in the community feed the next time anyone views it.
+  if (user) {
+    const meta = user.user_metadata ?? {}
+    createSupabaseServerClient()
+      .from('profiles')
+      .upsert(
+        {
+          user_id:      user.id,
+          display_name: (meta.display_name as string | undefined)
+                          ?? user.email?.split('@')[0]
+                          ?? 'Gardener',
+          avatar_emoji: (meta.avatar_emoji as string | undefined) ?? '🪴',
+        },
+        { onConflict: 'user_id', ignoreDuplicates: true },
+      )
+      .then()   // fire-and-forget — never delays the page render
+  }
 
   // Auth-aware base data (falls back to Guest demo when not logged in)
   const [pots, tasks, todayRecordedIds, communityPosts] = await Promise.all([
