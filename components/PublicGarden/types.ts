@@ -33,6 +33,12 @@ export interface GardenTile {
   size?: number        // size multiplier, default 1, event tiles 1.4
   /** Override the navigation link in the community feed (default: /post/community/[id]) */
   href?: string
+  /**
+   * Pot / plant name shown after the author name in feed cards (e.g. "· Rose Pot").
+   * When set, the feed card renders "UserName · potName" instead of just "UserName".
+   * Demo tiles leave this unset and use a plant RelationTag instead.
+   */
+  potName?: string
   /** Floating activity bubble drawn above the tile illustration. */
   statusBubble?: StatusBubble
 }

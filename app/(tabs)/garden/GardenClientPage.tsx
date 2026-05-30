@@ -32,13 +32,18 @@ function timeAgo(dateStr: string): string {
 
 /** Convert a DB post record to the GardenTile shape expected by GardenFeed. */
 function postToTile(post: PostWithPot): GardenTile {
+  // Prefer the author's profile display name; fall back to pot name so
+  // the card is never blank even for users without a profiles row yet.
+  const authorName = post.display_name ?? post.pot_name
   return {
-    id:     post.id,
-    dx: 0, dy: 0,                    // not used in feed mode
-    userName: post.pot_name,          // pot name reads better than a UUID
+    id:      post.id,
+    dx: 0, dy: 0,                     // not used in feed mode
+    userName: authorName,
+    // Expose pot name separately so the card can render "AuthorName · PotName"
+    potName:  post.display_name ? post.pot_name : undefined,
     emoji:    post.pot_icon || '🌱',
     tags:     [],
-    href:     `/post/${post.id}`,     // real posts link to /post/[record-id]
+    href:     `/post/${post.id}`,      // real posts link to /post/[record-id]
     latestPost: {
       text:     post.caption || `New record: ${post.pot_name}`,
       timeAgo:  timeAgo(post.record_date),

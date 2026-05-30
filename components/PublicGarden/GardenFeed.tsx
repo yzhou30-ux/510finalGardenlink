@@ -124,8 +124,11 @@ export function GardenFeed({ tiles }: GardenFeedProps) {
 // ── Card ──────────────────────────────────────────────────────────────────────
 
 function MasonryCard({ tile }: { tile: GardenTile }) {
-  const post     = tile.latestPost!   // safe: GardenFeed filters for imageUrl
-  const plantTag = tile.tags.find(t => t.type === 'plant')
+  const post = tile.latestPost!   // safe: GardenFeed filters for imageUrl
+
+  // Show "AuthorName · PotName".
+  // Real posts carry potName directly; demo tiles use the plant RelationTag.
+  const potLabel = tile.potName ?? tile.tags.find(t => t.type === 'plant')?.label
 
   return (
     <Link
@@ -141,19 +144,17 @@ function MasonryCard({ tile }: { tile: GardenTile }) {
         boxShadow: 'var(--shadow-card-focus)',
         textDecoration: 'none',
         transition: 'transform 0.12s ease',
-        // Needs an explicit initial value so the transition works on first hover
         transform: 'scale(1)',
       }}
       onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.transform = 'scale(1.02)' }}
       onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.transform = 'scale(1)'  }}
     >
       {/* ── Photo ─────────────────────────────────────────────────────────── */}
-      {/* Wrapper provides the sage placeholder visible during image load */}
       <div style={{
         width: '100%',
         background: 'var(--glass-sage-light)',
-        lineHeight: 0,       // removes phantom gap below inline img
-        minHeight: 80,       // prevents container collapse before load
+        lineHeight: 0,
+        minHeight: 80,
       }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -173,7 +174,6 @@ function MasonryCard({ tile }: { tile: GardenTile }) {
             margin: '0 0 6px',
             fontSize: 12, lineHeight: 1.5,
             color: 'var(--sage-700)',
-            // Multi-line clamp — vendor prefix required
             display: '-webkit-box',
             WebkitLineClamp: 2,
             WebkitBoxOrient: 'vertical',
@@ -183,8 +183,8 @@ function MasonryCard({ tile }: { tile: GardenTile }) {
           </p>
         )}
 
-        {/* User row */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        {/* User row: [emoji] AuthorName · PotName */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
 
           {/* Tiny emoji avatar */}
           <div style={{
@@ -196,26 +196,30 @@ function MasonryCard({ tile }: { tile: GardenTile }) {
             {tile.emoji ?? '🌱'}
           </div>
 
-          {/* Username */}
+          {/* Author name */}
           <span style={{
             fontSize: 11, fontWeight: 500,
-            color: 'var(--sage-500)',
-            flex: 1, minWidth: 0,
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            color: 'var(--sage-700)',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden', textOverflow: 'ellipsis',
+            flexShrink: 1, minWidth: 0,
           }}>
             {tile.userName}
           </span>
 
-          {/* Plant tag pill (optional) */}
-          {plantTag && (
-            <span style={{
-              fontSize: 9, padding: '2px 7px', borderRadius: 10,
-              background: 'var(--glass-sage-light)',
-              color: 'var(--sage-500)',
-              flexShrink: 0, whiteSpace: 'nowrap',
-            }}>
-              {plantTag.label}
-            </span>
+          {/* Separator + pot / plant name */}
+          {potLabel && (
+            <>
+              <span style={{ fontSize: 11, color: 'var(--sage-300)', flexShrink: 0 }}>·</span>
+              <span style={{
+                fontSize: 11, color: 'var(--sage-400)',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden', textOverflow: 'ellipsis',
+                flexShrink: 1, minWidth: 0,
+              }}>
+                {potLabel}
+              </span>
+            </>
           )}
 
         </div>

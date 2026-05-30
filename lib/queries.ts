@@ -1,10 +1,15 @@
 // lib/queries.ts — Supabase query helpers（Server Components 用）
 import { supabase } from './supabase'
 import type { Pot, DailyRecord, Task, DailyComment, Message, Profile } from './types'
-import type { CommunityMember } from './gardenLayout'
+import type { CommunityMember, PlantEntry } from './gardenLayout'
 
-// A published post joined with its pot's display info
-export type PostWithPot = DailyRecord & { pot_name: string; pot_icon: string }
+// A published post joined with its pot's display info and the author's profile name
+export type PostWithPot = DailyRecord & {
+  pot_name: string
+  pot_icon: string
+  /** Author's profile display name — undefined when the user has no profiles row yet. */
+  display_name?: string
+}
 
 // ─── Pots ─────────────────────────────────────────────────────────────────
 
@@ -445,6 +450,8 @@ export async function getMyPostsWithPotName(userId: string | null): Promise<Post
 
 /**
  * Fetch recent community posts (has_post=true, all users), joined with pot info.
+ * Also fetches the author's profile display_name in a second batch query so the
+ * feed can show "ProfileName · PotName" instead of just the pot name.
  * Used to populate the community feed in the garden page.
  */
 export async function getCommunityPosts(limit = 30): Promise<PostWithPot[]> {
@@ -455,10 +462,32 @@ export async function getCommunityPosts(limit = 30): Promise<PostWithPot[]> {
     .order('record_date', { ascending: false })
     .limit(limit)
   if (error) return []
-  return (data ?? []).map((row: DailyRecord & { pots: { name: string; icon: string } | null }) => ({
+
+  const rows = (data ?? []).map((row: DailyRecord & { pots: { name: string; icon: string } | null }) => ({
     ...row,
     pot_name: row.pots?.name ?? 'Unknown',
     pot_icon: row.pots?.icon ?? '🪴',
+  }))
+
+  // Batch-fetch display names for all unique authors in this page
+  const userIds = [...new Set(
+    rows.map(r => r.user_id).filter((id): id is string => Boolean(id))
+  )]
+
+  const displayNames = new Map<string, string>()
+  if (userIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('user_id, display_name')
+      .in('user_id', userIds)
+    ;(profiles ?? []).forEach((p: { user_id: string; display_name: string }) => {
+      displayNames.set(p.user_id, p.display_name)
+    })
+  }
+
+  return rows.map(row => ({
+    ...row,
+    display_name: row.user_id ? displayNames.get(row.user_id) : undefined,
   }))
 }
 
@@ -522,19 +551,21 @@ export async function getCommunityMembers(
 
   const userIds = (profiles as ProfileRow[]).map(p => p.user_id)
 
-  // 3. Pots (plant names + creation timestamp) per user
+  // 3. Pots (plant names + botanical data + creation timestamp) per user
   const { data: allPots } = await supabase
     .from('pots')
-    .select('user_id, name, created_at')
+    .select('user_id, name, genus, family, created_at')
     .in('user_id', userIds)
 
-  const potsByUser       = new Map<string, string[]>()
-  const earliestPotAt    = new Map<string, string>()  // oldest pot per user (newPot bubble)
-  ;(allPots ?? []).forEach((p: { user_id: string; name: string; created_at: string }) => {
-    // Plant names list
+  type PotRow = { user_id: string; name: string; genus: string | null; family: string | null; created_at: string }
+
+  const potsByUser       = new Map<string, PlantEntry[]>()
+  const earliestPotAt    = new Map<string, string>()   // oldest pot per user (newPot bubble)
+  ;(allPots ?? []).forEach((p: PotRow) => {
+    const entry: PlantEntry = { name: p.name, genus: p.genus ?? undefined, family: p.family ?? undefined }
     const list = potsByUser.get(p.user_id)
-    if (list) list.push(p.name)
-    else potsByUser.set(p.user_id, [p.name])
+    if (list) list.push(entry)
+    else potsByUser.set(p.user_id, [entry])
     // Track earliest pot creation date
     const existing = earliestPotAt.get(p.user_id)
     if (!existing || p.created_at < existing) earliestPotAt.set(p.user_id, p.created_at)
@@ -576,17 +607,23 @@ export async function getCommunityMembers(
 }
 
 /**
- * Get the current user's city and plant names for affinity layout configuration.
+ * Get the current user's city and structured plant list for affinity layout configuration.
+ * Includes genus and family so computeGardenLayout can use tiered botanical matching.
  */
 export async function getMyLayoutConfig(
   currentUserId: string,
-): Promise<{ myCity: string; myPlants: string[] }> {
+): Promise<{ myCity: string; myPlants: PlantEntry[] }> {
   const [profileRes, potsRes] = await Promise.all([
     supabase.from('profiles').select('city').eq('user_id', currentUserId).single(),
-    supabase.from('pots').select('name').eq('user_id', currentUserId),
+    supabase.from('pots').select('name, genus, family').eq('user_id', currentUserId),
   ])
+  type MyPotRow = { name: string; genus: string | null; family: string | null }
   return {
     myCity:   (profileRes.data as { city: string | null } | null)?.city ?? '',
-    myPlants: ((potsRes.data ?? []) as { name: string }[]).map(p => p.name),
+    myPlants: ((potsRes.data ?? []) as MyPotRow[]).map(p => ({
+      name:   p.name,
+      genus:  p.genus  ?? undefined,
+      family: p.family ?? undefined,
+    })),
   }
 }
