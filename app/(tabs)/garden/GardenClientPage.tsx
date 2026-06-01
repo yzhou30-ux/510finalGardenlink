@@ -42,7 +42,9 @@ function postToTile(post: PostWithPot): GardenTile {
     // Expose pot name separately so the card can render "AuthorName · PotName"
     potName:  post.display_name ? post.pot_name : undefined,
     emoji:    post.pot_icon || '🌱',
-    tags:     [],
+    // Surface the record's plant tags (e.g. ['Rose','bloom']) as RelationTag[].
+    // Capped at 3 to keep feed cards compact.
+    tags: (post.tags ?? []).slice(0, 3).map(label => ({ type: 'plant' as const, label })),
     href:     `/post/${post.id}`,      // real posts link to /post/[record-id]
     latestPost: {
       text:     post.caption || `New record: ${post.pot_name}`,
@@ -209,10 +211,12 @@ export function GardenClientPage({ pots, tasks: _tasks, todayRecordedIds, commun
 
   // ── Community tiles ────────────────────────────────────────────────────────
   // Map mode:  server-computed affinity layout → demo fallback (not logged in / no members)
+  //            Also falls back when computedTiles is an empty array — the ?? operator
+  //            only catches null/undefined, not [], which would leave the canvas blank.
   // Feed mode: real published posts with optional help filter → demo fallback (no posts)
   const communityTiles = useMemo(() => {
     if (communityView === 'map') {
-      return computedTiles ?? DEMO_COMMUNITY_TILES
+      return (computedTiles && computedTiles.length > 0) ? computedTiles : DEMO_COMMUNITY_TILES
     }
     // Feed mode
     if (communityPosts.length === 0) return DEMO_COMMUNITY_TILES

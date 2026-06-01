@@ -87,7 +87,13 @@ export default async function GardenPage() {
           COMMUNITY_EVENTS,
           layoutConfig,
         )
-        computedTiles = [...memberTiles, ...eventTiles]
+        const result = [...memberTiles, ...eventTiles]
+        // Only use computed layout if at least one tile is within visible range
+        // (distance < 6 in grid units).  When every member has zero affinity
+        // they all map to MAX_DISTANCE and end up off-screen — fall through to
+        // demo tiles instead of showing a blank canvas.
+        const hasVisibleTile = result.some(t => Math.hypot(t.dx, t.dy) < 6)
+        computedTiles = hasVisibleTile ? result : null
       }
     } catch {
       // Layout computation failed (e.g. migration not applied yet) — use demo

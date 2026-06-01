@@ -58,6 +58,7 @@ type PlantIdentification = {
   family: string
   commonNames: string[]
   score: number
+  organ: string | null   // e.g. "Leaf", "Flower", "Fruit", "Bark", "Habit" — null when not detected
 }
 
 // Inner component holds all logic that calls useSearchParams()
@@ -129,6 +130,11 @@ function CameraPageInner() {
       const data = await res.json()
       if (myCount === identifyCounterRef.current && data.success) {
         setPlantId(data.result as PlantIdentification)
+        // 🔍 DIAGNOSTIC STEP 2 — remove after debugging
+        console.log('[DEBUG camera] plantId set:', JSON.stringify(data.result, null, 2))
+      } else if (myCount === identifyCounterRef.current) {
+        // 🔍 DIAGNOSTIC STEP 2b — remove after debugging
+        console.log('[DEBUG camera] identify not used — data.success:', data.success, 'data:', JSON.stringify(data))
       }
     } catch {
       // identification failure is always silent — never blocks upload
@@ -183,28 +189,41 @@ function CameraPageInner() {
       // has been removed (see supabase/migrations/001_remove_unique_constraint.sql).
       // Multiple uploads on the same day each become an independent record.
       // The timeline groups by date client-side and shows the latest as cover.
-      const { error: dbErr } = await supabase
+      const insertPayload = {
+        user_id:     user.id,
+        user_name:   user.id,
+        pot_id:      potId,
+        record_date: today,
+        image_url:   publicUrl,
+        ...(caption.trim() && { caption: caption.trim() }),
+        has_post:    publishPost,
+        // PlantNet identification fields (only when identification succeeded)
+        ...(plantId && {
+          species_name:   plantId.speciesName,
+          genus:          plantId.genus,
+          family:         plantId.family,
+          plantnet_score: plantId.score,
+          // Tag pills: organ label (what was photographed) + common name (which plant).
+          // e.g. ["Leaf", "China rose"] or ["Flower"] or ["Rose"] — max 2, no genus.
+          tags: [
+            ...(plantId.organ ? [plantId.organ] : []),
+            ...(plantId.commonNames.length > 0 ? [plantId.commonNames[0]] : []),
+          ],
+        }),
+      }
+
+      // 🔍 DIAGNOSTIC STEP 3 — remove after debugging
+      console.log('[DEBUG camera] INSERT payload:', JSON.stringify(insertPayload, null, 2))
+
+      const { data: insertData, error: dbErr } = await supabase
         .from('daily_records')
-        .insert({
-          user_id:     user.id,
-          user_name:   user.id,
-          pot_id:      potId,
-          record_date: today,
-          image_url:   publicUrl,
-          ...(caption.trim() && { caption: caption.trim() }),
-          has_post:    publishPost,
-          // PlantNet identification fields (only when identification succeeded)
-          ...(plantId && {
-            species_name:   plantId.speciesName,
-            genus:          plantId.genus,
-            family:         plantId.family,
-            plantnet_score: plantId.score,
-            tags: [
-              plantId.genus,
-              ...(plantId.commonNames.length > 0 ? [plantId.commonNames[0]] : []),
-            ],
-          }),
-        })
+        .insert(insertPayload)
+        .select()
+
+      // 🔍 DIAGNOSTIC STEP 4 — remove after debugging
+      console.log('[DEBUG camera] INSERT result:', JSON.stringify(insertData, null, 2))
+      console.log('[DEBUG camera] INSERT error:', JSON.stringify(dbErr, null, 2))
+
       if (dbErr) throw new Error(dbErr.message)
 
       setStatus('done')

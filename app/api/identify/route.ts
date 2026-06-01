@@ -25,6 +25,13 @@ interface PlantNetResult {
     genus?:  { scientificNameWithoutAuthor?: string }
     family?: { scientificNameWithoutAuthor?: string }
   }
+  // Organ detected in the submitted image.
+  // PlantNet v2 exposes this via two locations depending on version:
+  //   newer: result.organs[0].id        e.g. "leaf", "flower", "fruit", "bark", "habit"
+  //   older: result.images[0].organ     same values, from the best-match reference image
+  // We read both and take whichever is present.
+  organs?: { id: string; score?: number }[]
+  images?: { organ?: string }[]
 }
 
 export async function POST(req: NextRequest) {
@@ -88,12 +95,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: 'api_error' })
   }
 
+  // 🔍 DIAGNOSTIC STEP 1 — remove after debugging
+  console.log('[DEBUG identify] PlantNet raw response (first result):', JSON.stringify((pnData.results ?? [])[0], null, 2))
+
   const top = (pnData.results ?? [])[0]
   if (!top || top.score < MIN_SCORE) {
     return NextResponse.json({ success: false, error: 'low_confidence' })
   }
 
-  // ── 5. Return structured botanical result ─────────────────────────────────
+  // ── 5. Extract organ label ────────────────────────────────────────────────
+  // Try the newer top-level organs[] first, fall back to images[0].organ.
+  // Possible values: "leaf", "flower", "fruit", "bark", "habit", "other", "auto".
+  // "auto" means PlantNet couldn't determine the organ — treat it as absent.
+  const rawOrgan = top.organs?.[0]?.id ?? top.images?.[0]?.organ ?? null
+  const organ = rawOrgan && rawOrgan !== 'auto'
+    ? rawOrgan.charAt(0).toUpperCase() + rawOrgan.slice(1)
+    : null
+
+  // ── 6. Return structured botanical result ─────────────────────────────────
   return NextResponse.json({
     success: true,
     result: {
@@ -102,6 +121,7 @@ export async function POST(req: NextRequest) {
       family:      top.species?.family?.scientificNameWithoutAuthor ?? '',
       commonNames: top.species?.commonNames ?? [],
       score:       top.score,
+      organ,       // e.g. "Leaf" | "Flower" | "Fruit" | "Bark" | "Habit" | null
     },
   })
 }

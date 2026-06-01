@@ -1,14 +1,15 @@
 // app/(tabs)/timeline/TimelineClientPage.tsx
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { format } from 'date-fns'
+import { useGardenStore } from '@/lib/store'
 import { IconList, IconStack2, IconCamera } from '@tabler/icons-react'
 import { CardDeck, type CardData } from '@/components/CardDeck'
 import { PotSelector, type PotOption } from '@/components/PotSelector'
 import { ViewToggle } from '@/components/ViewToggle'
 import { PostPublishModal } from '@/components/PostPublishModal'
+import { TimelineListView } from './TimelineListView'
 import type { Pot, DailyRecord } from '@/lib/types'
 
 // ── Group records by date → CardData[] ───────────────────────────────────────
@@ -38,6 +39,8 @@ function groupRecordsByDate(records: DailyRecord[]): CardData[] {
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       )
       const latest = sorted[0]
+      // 🔍 DIAGNOSTIC STEP 6 — remove after debugging
+      console.log('[DEBUG timeline] record', latest.id, 'tags:', JSON.stringify(latest.tags))
       return {
         id:           latest.id,
         date:         new Date(dateStr + 'T12:00:00'),  // noon local time avoids TZ off-by-one
@@ -59,71 +62,6 @@ function groupRecordsByDate(records: DailyRecord[]): CardData[] {
     .sort((a, b) => a.date.getTime() - b.date.getTime())  // ascending: oldest → newest
 }
 
-// ── Feed list ─────────────────────────────────────────────────────────────────
-// Shows every individual DailyRecord as its own row (newest first).
-// This means multiple uploads on the same day each appear separately.
-function FeedList({ records }: { records: DailyRecord[] }) {
-  if (records.length === 0) {
-    return (
-      <div style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        justifyContent: 'center', padding: '60px 0', gap: 8,
-        color: 'var(--sage-300)', fontSize: 12, fontFamily: 'var(--font-sans)',
-      }}>
-        <IconCamera size={28} strokeWidth={1.25} />
-        <span>No records yet — take your first photo!</span>
-      </div>
-    )
-  }
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
-      {records.map((record) => (
-        <div key={record.id} style={{
-          display: 'flex', alignItems: 'center', gap: 12, padding: 10,
-          background: 'var(--bg-card)', border: '0.5px solid var(--border-default)', borderRadius: 12,
-        }}>
-          <div style={{
-            width: 64, height: 64, borderRadius: 8,
-            background: 'var(--glass-sage-light)', flexShrink: 0,
-            backgroundImage: record.image_url ? `url(${record.image_url})` : undefined,
-            backgroundSize: 'cover', backgroundPosition: 'center',
-            display: record.image_url ? undefined : 'flex', alignItems: 'center',
-            justifyContent: 'center', fontSize: 24,
-          }}>
-            {!record.image_url && '🪴'}
-          </div>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-            <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--sage-900)', fontFamily: 'var(--font-sans)' }}>
-              {format(new Date(record.record_date + 'T12:00:00'), 'MMM d')}
-            </span>
-            <span style={{ fontSize: 11, color: 'var(--sage-300)', fontFamily: 'var(--font-sans)',
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {record.caption ?? 'No caption'}
-            </span>
-            {record.tags && record.tags.length > 0 && (
-              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                {record.tags.map((tag) => (
-                  <span key={tag} style={{ fontSize: 9, padding: '2px 6px', borderRadius: 10,
-                    background: 'var(--glass-sage-light)', color: 'var(--sage-500)', fontFamily: 'var(--font-sans)' }}>
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-          {record.has_post && (
-            <span style={{ fontSize: 8, padding: '2px 6px', borderRadius: 8,
-              background: 'var(--success-bg)', color: 'var(--success)',
-              fontFamily: 'var(--font-sans)', flexShrink: 0 }}>
-              Post
-            </span>
-          )}
-        </div>
-      ))}
-    </div>
-  )
-}
-
 // ── Props ────────────────────────────────────────────────────────────────────
 interface Props {
   pots: Pot[]
@@ -136,6 +74,13 @@ export function TimelineClientPage({ pots, records, selectedPotId }: Props) {
   const router = useRouter()
   const [view, setView] = useState<'card' | 'list'>('card')
   const [postCard, setPostCard] = useState<CardData | null>(null)   // opened PostPublishModal
+
+  // Keep the global store in sync so FloatingTabBar can pre-select this pot
+  // when the user taps the camera button from any page.
+  const setLastViewedPotId = useGardenStore(s => s.setLastViewedPotId)
+  useEffect(() => {
+    if (selectedPotId) setLastViewedPotId(selectedPotId)
+  }, [selectedPotId, setLastViewedPotId])
 
   const viewOptions = useMemo(() => [
     { value: 'card', label: 'Cards', icon: <IconStack2 size={12} strokeWidth={1.75} /> },
@@ -217,7 +162,7 @@ export function TimelineClientPage({ pots, records, selectedPotId }: Props) {
           </div>
         )
       ) : (
-        <FeedList records={records} />
+        <TimelineListView cards={cards} onMarkPost={handleMarkPost} />
       )}
 
       {/* Post publish modal */}

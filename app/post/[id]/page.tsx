@@ -280,11 +280,13 @@ export default async function PostDetailPage({ params }: PageProps) {
         </div>
       </div>
       {/* ── Pot history strip ──────────────────────────────────────────────── */}
-      {/* Renders nothing when historyRecords is empty */}
+      {/* For help posts with no prior records, renders a fallback notice.
+          For all other post types with no prior records, renders nothing. */}
       <PotHistory
         currentRecord={record}
         historyRecords={historyRecords}
         potName={potName}
+        isHelpPost={isHelpPost}
       />
     </div>
   )

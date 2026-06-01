@@ -126,9 +126,14 @@ export function GardenFeed({ tiles }: GardenFeedProps) {
 function MasonryCard({ tile }: { tile: GardenTile }) {
   const post = tile.latestPost!   // safe: GardenFeed filters for imageUrl
 
-  // Show "AuthorName · PotName".
-  // Real posts carry potName directly; demo tiles use the plant RelationTag.
+  // Pot label shown in the author line.
+  // Real posts carry potName directly; demo tiles fall back to the first plant RelationTag.
   const potLabel = tile.potName ?? tile.tags.find(t => t.type === 'plant')?.label
+
+  // Plant tag pills — exclude whichever label is already shown as potLabel to avoid duplication.
+  const plantTags = tile.tags
+    .filter(t => t.type === 'plant' && t.label !== potLabel)
+    .slice(0, 3)
 
   return (
     <Link
@@ -183,7 +188,26 @@ function MasonryCard({ tile }: { tile: GardenTile }) {
           </p>
         )}
 
-        {/* User row: [emoji] AuthorName · PotName */}
+        {/* ── Plant tag pills ───────────────────────────────────────────── */}
+        {plantTags.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
+            {plantTags.map(t => (
+              <span
+                key={t.label}
+                style={{
+                  fontSize: 9, padding: '2px 7px', borderRadius: 10,
+                  background: 'var(--glass-sage-light)',
+                  color: 'var(--sage-500)',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {t.label}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* ── User row: [emoji] AuthorName · PotName        timeAgo ────── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
 
           {/* Tiny emoji avatar */}
@@ -221,6 +245,17 @@ function MasonryCard({ tile }: { tile: GardenTile }) {
               </span>
             </>
           )}
+
+          {/* Spacer — pushes timestamp to the right */}
+          <span style={{ flex: 1 }} />
+
+          {/* Timestamp */}
+          <span style={{
+            fontSize: 10, color: 'var(--sage-300)',
+            whiteSpace: 'nowrap', flexShrink: 0,
+          }}>
+            {post.timeAgo}
+          </span>
 
         </div>
       </div>

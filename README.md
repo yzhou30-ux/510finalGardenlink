@@ -76,8 +76,11 @@ Run the following SQL files **in order** in the Supabase SQL Editor:
 | `supabase/auth_rls_patch.sql` | Public read policies for `pots` and `daily_records` |
 | `supabase/migrations/001_remove_unique_constraint.sql` | Removes the per-day unique constraint so multiple uploads are allowed |
 | `supabase/migrations/002_security_fixes.sql` | Storage bucket policies + RLS for `daily_comments` |
+| `supabase/migrations/003_community_layout.sql` | `follows` table + `profiles.city` column for affinity-based community garden layout |
+| `supabase/migrations/004_plantnet_botanical.sql` | `genus` / `family` botanical columns on `pots` and `daily_records` for PlantNet identification |
 
-> **Seed data (optional):** Run `supabase/seed.sql` to populate demo pots and records.
+> **Seed data (optional):** Run `supabase/seed.sql` to populate demo pots, records, tasks, and comments.
+> For community demo tiles (map view), also run `supabase/seed_community.sql`.
 
 ### 4. Create the storage bucket
 

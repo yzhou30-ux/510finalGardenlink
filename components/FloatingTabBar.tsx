@@ -5,12 +5,14 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { IconPlant2, IconCalendar, IconCamera, IconUser } from '@tabler/icons-react'
 import { useAuthStatus } from '@/lib/useAuthStatus'
+import { useGardenStore } from '@/lib/store'
 import { AuthOverlay } from './AuthOverlay'
 
 export function FloatingTabBar({ hasUnread = true }: { hasUnread?: boolean }) {
   const pathname = usePathname()
   const router   = useRouter()
   const { isGuest } = useAuthStatus()
+  const lastViewedPotId = useGardenStore(s => s.lastViewedPotId)
 
   // Overlay state — message changes based on which protected action was tapped
   const [overlayMsg, setOverlayMsg] = useState<string | null>(null)
@@ -103,8 +105,13 @@ export function FloatingTabBar({ hasUnread = true }: { hasUnread?: boolean }) {
         </button>
 
         {/* Camera button (center) — protected for guests */}
+        {/* Pre-selects the last-viewed pot via ?pot= so the user doesn't have
+            to switch pots manually after arriving from the Timeline.           */}
         <button
-          onClick={() => handleProtected('/camera', 'Sign in to record your plants')}
+          onClick={() => handleProtected(
+            lastViewedPotId ? `/camera?pot=${encodeURIComponent(lastViewedPotId)}` : '/camera',
+            'Sign in to record your plants',
+          )}
           style={{
             width: 34,
             height: 34,

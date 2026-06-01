@@ -6,6 +6,8 @@ export interface Profile {
   avatar_emoji: string
   bio: string | null
   created_at: string
+  /** City displayName as chosen in Settings (e.g. "San Francisco, CA"). Empty string = not set. */
+  city: string
 }
 
 export interface Pot {

@@ -14,6 +14,12 @@ interface PotHistoryProps {
   currentRecord: DailyRecord   // the post currently being viewed
   historyRecords: DailyRecord[] // sibling records, newest first, current excluded
   potName: string
+  /**
+   * When true and historyRecords is empty, render a small fallback notice
+   * ("no prior records") instead of hiding the section entirely.
+   * This matters for help posts where the absence of history is meaningful context.
+   */
+  isHelpPost?: boolean
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -25,11 +31,31 @@ function thumbDate(dateStr: string): string {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function PotHistory({ currentRecord, historyRecords, potName }: PotHistoryProps) {
+export function PotHistory({ currentRecord, historyRecords, potName, isHelpPost = false }: PotHistoryProps) {
   const router = useRouter()
 
-  // Don't render the section at all when there's nothing to show
-  if (historyRecords.length === 0) return null
+  // When there are no prior records and this is not a help post, hide the section silently.
+  // For help posts, show a small fallback so the reviewer has context even with no history.
+  if (historyRecords.length === 0) {
+    if (!isHelpPost) return null
+    return (
+      <div style={{
+        margin: '12px 16px 0',
+        padding: '12px 16px',
+        background: 'var(--bg-card)',
+        border: '0.5px solid var(--border-default)',
+        borderRadius: 14,
+        display: 'flex', alignItems: 'center', gap: 10,
+        fontFamily: 'var(--font-sans)',
+      }}>
+        <span style={{ fontSize: 18, flexShrink: 0 }}>📷</span>
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--sage-400)', lineHeight: 1.5 }}>
+          No prior records for <strong style={{ color: 'var(--sage-700)', fontWeight: 500 }}>{potName}</strong> —
+          this is the first photo on file. There&apos;s no earlier history to compare against yet.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <>
