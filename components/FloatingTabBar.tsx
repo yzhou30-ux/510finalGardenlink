@@ -17,8 +17,13 @@ export function FloatingTabBar({ hasUnread = true }: { hasUnread?: boolean }) {
   // Overlay state — message changes based on which protected action was tapped
   const [overlayMsg, setOverlayMsg] = useState<string | null>(null)
 
-  // Hide on auth pages and the camera page (which has its own back button)
-  if (pathname.startsWith('/auth') || pathname === '/camera') return null
+  // Hide on auth pages, the camera page (which has its own back button),
+  // and /user/[id]/garden detail pages
+  if (
+    pathname.startsWith('/auth') ||
+    pathname === '/camera' ||
+    /^\/user\/[^/]+\/garden/.test(pathname)
+  ) return null
 
   const isActive = (path: string) => pathname === path || pathname.startsWith(path + '/')
 
