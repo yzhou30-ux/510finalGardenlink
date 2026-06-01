@@ -629,3 +629,24 @@ export async function getMyLayoutConfig(
     })),
   }
 }
+
+/**
+ * Returns true if currentUserId is following targetUserId.
+ * Returns false if not following, or if the follows table doesn't exist yet.
+ */
+export async function getFollowStatus(
+  currentUserId: string,
+  targetUserId: string,
+): Promise<boolean> {
+  try {
+    const { data } = await supabase
+      .from('follows')
+      .select('follower_id')
+      .eq('follower_id', currentUserId)
+      .eq('following_id', targetUserId)
+      .maybeSingle()
+    return data !== null
+  } catch {
+    return false
+  }
+}
