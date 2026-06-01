@@ -210,13 +210,25 @@ export function GardenClientPage({ pots, tasks: _tasks, todayRecordedIds, commun
   ], [])
 
   // ── Community tiles ────────────────────────────────────────────────────────
-  // Map mode:  server-computed affinity layout → demo fallback (not logged in / no members)
-  //            Also falls back when computedTiles is an empty array — the ?? operator
-  //            only catches null/undefined, not [], which would leave the canvas blank.
+  // Map mode:
+  //   • No real users (guest / no community yet) → pure demo tiles.
+  //   • Real users exist → demo members as backdrop + real user tiles at their
+  //     affinity-computed positions.  The demo's own event tile is removed to
+  //     avoid duplicating the events that computeGardenLayout already places.
+  //
   // Feed mode: real published posts with optional help filter → demo fallback (no posts)
   const communityTiles = useMemo(() => {
     if (communityView === 'map') {
-      return (computedTiles && computedTiles.length > 0) ? computedTiles : DEMO_COMMUNITY_TILES
+      if (!computedTiles || computedTiles.length === 0) {
+        return DEMO_COMMUNITY_TILES
+      }
+      // Blend: keep all 8 demo member tiles as community background,
+      // add real users on top at their affinity-sorted positions.
+      // Drop the demo's hardcoded event tile — the computed layout already
+      // includes events (Spring Fair, Succulent Swap) anchored near their
+      // plant clusters, so keeping both would create visual duplicates.
+      const demoMembers = DEMO_COMMUNITY_TILES.filter(t => !t.isEvent)
+      return [...demoMembers, ...computedTiles]
     }
     // Feed mode
     if (communityPosts.length === 0) return DEMO_COMMUNITY_TILES
@@ -329,7 +341,8 @@ export function GardenClientPage({ pots, tasks: _tasks, todayRecordedIds, commun
 
         {!isMyGarden ? (
           /* Community — canvas / feed fills the full content box.
-             Map mode: always uses pre-positioned DEMO_COMMUNITY_TILES.
+             Map mode: demo members as backdrop + real users at affinity positions
+                       (guest / no community → pure demo tiles).
              Feed mode: uses filtered real posts (or demo fallback if none yet).
              Help filter: shows only posts with post_category === 'help'. */
           <div style={{ position: 'absolute', inset: 0 }}>
@@ -337,8 +350,8 @@ export function GardenClientPage({ pots, tasks: _tasks, todayRecordedIds, commun
               tiles={showHelpEmpty ? [] : communityTiles}
               myTile={MY_TILE}
               viewMode={communityView}
-              onVisitGarden={(tile) => console.log('visit', tile.id)}
-              onMessage={(tile) => console.log('message', tile.id)}
+              onVisitGarden={(tile) => router.push(`/user/${tile.id}/garden`)}
+              onMessage={(tile) => router.push('/messages')}
             />
 
             {/* Empty state overlay — shown only when help filter is active with no results */}
