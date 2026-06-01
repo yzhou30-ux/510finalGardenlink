@@ -1,18 +1,104 @@
 # GardenLink v2
 
-A plant social diary app. Photograph your plants every day, organise records by pot and timeline, and share moments with the community.
+**[🌿 Live Demo → 510final-gardenlink.vercel.app](https://510final-gardenlink.vercel.app/)**
+
+A plant social diary app. Photograph your plants every day, organise records by pot and timeline, and share moments with a neighbourhood community.
+
+---
+
+## Try It Out
+
+A test account is available for immediate exploration — no sign-up required:
+
+| Field | Value |
+|---|---|
+| Email | `yzhou30@uw.edu` |
+| Password | `mim7609@` |
+
+The account has pre-populated pots, daily records, and community connections so every feature is visible on first load.
 
 ---
 
 ## Features
 
+### My Garden
+- **Pot management** — create named pots with emoji icons and daily care tasks
 - **Daily records** — upload a photo for each pot every day; multiple uploads on the same day are all kept
 - **Timeline / CardDeck** — a physics-driven vertical card deck grouped by date with smooth spring-snap scroll
+- **List view** — simple chronological feed as an alternative to the card deck
 - **My Posts** — published posts filterable by category (Bloom · Harvest · Growth · Help)
 - **Post detail** — cover photo, caption, tags, comments, and a pot history thumbnail strip
-- **Community garden** — a diamond-grid view of public posts with comment support
-- **Pot management** — create named pots with emoji icons and daily care tasks
+
+### Community Garden
+- **Affinity-based map** — other gardeners are positioned on a 2-D canvas by affinity score (follow relationship, shared city, overlapping plants, mutual follows, recent activity); real users blend with demo members so the map is never empty
+- **Feed view** — chronological feed of published community posts with a "Help only" filter
+- **Bottom sheet** — tap any tile to see the user's latest post preview (16:10 photo, 2-line caption, like count); tapping the preview navigates to the full post; action buttons open Visit Garden or Message
+- **Visit Garden page** — `/user/[id]/garden` shows a user's profile (avatar, bio, city, years active), their pots in a horizontal strip, and all published photos in a 2-column infinite-scroll grid (date label, Bloom/Help badge, caption overlay)
+- **Follow / Unfollow** — optimistic toggle with API-backed persistence; affects affinity scores for future map positions
+- **Demo tiles** — eight pre-seeded community members (Flora, GardenPro, SuccyCat …) and a Spring Fair event tile provide a rich map even before real users join
+
+### Auth & Sharing
 - **Authentication** — email/password sign-up via Supabase Auth; row-level security on every table
+- **Messages** — in-app inbox and chat thread
+
+---
+
+## Architecture
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  Next.js 14 App Router (Server Components by default)            │
+│                                                                  │
+│  app/(tabs)/garden/                                              │
+│    page.tsx           Server Component — fetches pots, community │
+│                       members, computes affinity layout          │
+│    GardenClientPage   Client Component — segment/view toggles,  │
+│                       tile blending (demo + real users)          │
+│                                                                  │
+│  app/user/[id]/garden/                                           │
+│    page.tsx           Server Component — profile, pots, posts,  │
+│                       follow status (UUID → real; short → demo) │
+│    UserGardenClient   Client Component — follow toggle,          │
+│                       pots strip, infinite-scroll photo grid     │
+│                                                                  │
+│  app/(tabs)/timeline/                                            │
+│    page.tsx           Server Component — records per pot        │
+│    TimelineClientPage Client Component — CardDeck (Framer Motion)│
+└──────────────────────────────────────────────────────────────────┘
+         │                          │
+         ▼                          ▼
+┌─────────────────┐      ┌──────────────────────────────────┐
+│  lib/queries.ts │      │  components/PublicGarden/        │
+│  All Supabase   │      │    GardenCanvas (HTML Canvas,    │
+│  read helpers   │      │      drag + pan + zoom)          │
+│                 │      │    GardenBottomSheet             │
+│  lib/gardenLayout│      │      (preview card, Link → post) │
+│  Affinity score │      │    GardenFeed (feed mode)        │
+│  + polar-coord  │──────│    useGardenDrag, useGardenTiles │
+│  tile placement │      └──────────────────────────────────┘
+└─────────────────┘
+         │
+         ▼
+┌───────────────────────────┐
+│  Supabase (PostgreSQL)    │
+│  pots · daily_records     │
+│  tasks · daily_comments   │
+│  messages · profiles      │
+│  follows                  │
+│  + Storage bucket "photos"│
+└───────────────────────────┘
+```
+
+### Key design decisions
+
+| Decision | Rationale |
+|---|---|
+| Server Components by default | DB queries stay on the server; `'use client'` only for canvas, drag, and interactive state |
+| Affinity layout as a pure function | `computeGardenLayout()` in `lib/gardenLayout.ts` takes data in and returns positioned tiles — no side effects, easy to test |
+| Demo tiles always present | Map is never empty; real users blend on top of eight seeded demo members so newcomers see a lively community immediately |
+| `MotionValue` for card scroll offset | Avoids re-renders on every animation frame; only the DOM transform updates |
+| Graceful degradation on `follows` table | All follow-related queries are wrapped in try/catch — the app works fully even if the `follows` migration hasn't been run yet |
+| CSS variables for all design tokens | Sage & cream palette, glass layers, shadows — all defined in `globals.css`; no hard-coded colours in component files |
 
 ---
 
@@ -119,7 +205,7 @@ Open [http://localhost:3000](http://localhost:3000).
 ```
 app/
   (tabs)/
-    garden/          # Public garden (diamond grid) + My garden (pot grid + tasks)
+    garden/          # Community garden (map + feed) + My garden (pot grid + tasks)
     timeline/        # CardDeck timeline per pot
     profile/         # User profile, stats, messages entry
   camera/            # Photo capture and upload flow
@@ -128,8 +214,15 @@ app/
   posts/             # My Posts list with category filter
   messages/          # Inbox + chat thread
   auth/              # Sign-in / sign-up pages
+  user/[id]/
+    page.tsx         # Public profile page
+    garden/          # Visit Garden page (pots + photo grid)
+  api/
+    follow/          # POST /api/follow — follow-toggle endpoint
+    identify-plant/  # POST /api/identify-plant — PlantNet integration
 components/
   CardDeck/          # Physics-driven card scroll (core interaction)
+  PublicGarden/      # Canvas map, bottom sheet, feed, drag hook
   FloatingTabBar.tsx
   SegmentedControl.tsx
   PotSelector.tsx
@@ -142,6 +235,9 @@ lib/
   supabase-browser.ts # SSR browser client
   auth.ts            # getServerUser helper
   queries.ts         # All Supabase read queries
+  gardenLayout.ts    # Affinity score → polar coordinate tile placement
+  communityDemoData.ts # Demo tiles (Flora, GardenPro, …)
+  tileIllustrations.ts # Illustration URL mapping per plant name
   types.ts           # Shared TypeScript types
   store.ts           # Zustand store
 supabase/
