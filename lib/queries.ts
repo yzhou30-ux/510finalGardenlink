@@ -504,6 +504,7 @@ function formatTimeAgo(isoDate: string): string {
 
 /** Row shape returned by the latestPosts query. */
 type LatestPostRow = {
+  id: string
   user_id: string
   caption: string | null
   image_url: string | null
@@ -574,7 +575,7 @@ export async function getCommunityMembers(
   // 4. Latest published post per user (only the most recent one per user)
   const { data: latestPosts } = await supabase
     .from('daily_records')
-    .select('user_id, caption, image_url, created_at, post_category')
+    .select('id, user_id, caption, image_url, created_at, post_category')
     .eq('has_post', true)
     .in('user_id', userIds)
     .order('created_at', { ascending: false })
@@ -598,6 +599,7 @@ export async function getCommunityMembers(
       latestPostImageUrl: latest?.image_url ?? undefined,
       latestPostCategory: latest?.post_category ?? undefined,
       latestPostDate:     latest?.created_at ?? undefined,
+      latestPostId:       latest?.id ?? undefined,
       lastActiveAt:       latest?.created_at ?? undefined,
       potCreatedAt:       earliestPotAt.get(profile.user_id) ?? undefined,
       isFollowedByMe:     followingIds.has(profile.user_id),

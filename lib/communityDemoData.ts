@@ -3,7 +3,7 @@
 // Imported by both GardenClientPage (canvas) and /post/community/[id] (detail page).
 
 import type { GardenTile } from '@/components/PublicGarden/types'
-import { getTileIllustrationUrl, getMeIllustrationUrl } from '@/lib/tileIllustrations'
+import { getTileIllustrationUrl, getMeIllustrationUrl, getEventIllustrationUrl } from '@/lib/tileIllustrations'
 
 export const MY_TILE: GardenTile = {
   id: 'me',
@@ -20,7 +20,7 @@ export const DEMO_COMMUNITY_TILES: GardenTile[] = [
     id: '1', dx: -1.8, dy: -1.8,
     userName: 'Flora', emoji: '🌹',
     tags: [{ type: 'social', label: 'Following' }, { type: 'plant', label: 'Rose' }],
-    latestPost: { text: 'My first rose bloom of the season — so thrilled!', timeAgo: '3h ago' },
+    latestPost: { text: 'My first rose bloom of the season — so thrilled!', timeAgo: '3h ago', likeCount: 28 },
     illustrationUrl: getTileIllustrationUrl('Rose'),
     statusBubble: { type: 'bloom', label: 'Bloom' },
   },
@@ -28,21 +28,21 @@ export const DEMO_COMMUNITY_TILES: GardenTile[] = [
     id: '2', dx: 1.8, dy: -1.8,
     userName: 'GreenThumb', emoji: '🌿',
     tags: [{ type: 'geo', label: 'Nearby' }, { type: 'plant', label: 'Pothos' }],
-    latestPost: { text: 'Pothos is so low-maintenance — perfect for beginners', timeAgo: '1d ago' },
+    latestPost: { text: 'Pothos is so low-maintenance — perfect for beginners', timeAgo: '1d ago', likeCount: 14 },
     illustrationUrl: getTileIllustrationUrl('Pothos'),
   },
   {
     id: '3', dx: 0, dy: -2.8,
     userName: 'SuccyCat', emoji: '🌵',
     tags: [{ type: 'plant', label: 'Succulent' }],
-    latestPost: { text: 'New succulent haul — the whole windowsill is full now', timeAgo: '2d ago' },
+    latestPost: { text: 'New succulent haul — the whole windowsill is full now', timeAgo: '2d ago', likeCount: 9 },
     illustrationUrl: getTileIllustrationUrl('Succulent'),
   },
   {
     id: '4', dx: -2.8, dy: 0,
     userName: 'JasmineG', emoji: '🌸',
     tags: [{ type: 'geo', label: 'Same block' }, { type: 'plant', label: 'Jasmine' }],
-    latestPost: { text: 'Jasmine is in full bloom — the scent drifts all the way outside', timeAgo: '2h ago' },
+    latestPost: { text: 'Jasmine is in full bloom — the scent drifts all the way outside', timeAgo: '2h ago', likeCount: 41 },
     illustrationUrl: getTileIllustrationUrl('Jasmine'),
     statusBubble: { type: 'new', label: 'New' },
   },
@@ -51,25 +51,28 @@ export const DEMO_COMMUNITY_TILES: GardenTile[] = [
     userName: 'CactusKing', emoji: '🎋',
     tags: [{ type: 'plant', label: 'Cactus' }],
     statusBubble: { type: 'newPot', label: 'New pot' },
+    illustrationUrl: getTileIllustrationUrl('Cactus'),
   },
   {
     id: '6', dx: 0, dy: 2.8,
     userName: 'FernLover', emoji: '🌿',
     tags: [{ type: 'social', label: 'Featured' }],
-    latestPost: { text: 'Boston fern keeps getting bigger — hanging it up looks amazing', timeAgo: '5h ago' },
+    latestPost: { text: 'Boston fern keeps getting bigger — hanging it up looks amazing', timeAgo: '5h ago', likeCount: 17 },
+    illustrationUrl: getTileIllustrationUrl('Fern'),   // no fern asset yet → general fallback
   },
   {
     id: '7', dx: -1.8, dy: 1.8,
     userName: 'GardenPro', emoji: '🌼',
     tags: [{ type: 'geo', label: 'Same district' }],
-    latestPost: { text: 'Sharing my planting plan for this year', timeAgo: '3d ago' },
+    latestPost: { text: 'Sharing my planting plan for this year', timeAgo: '3d ago', likeCount: 6 },
     statusBubble: { type: 'help', label: 'Help' },
+    illustrationUrl: getTileIllustrationUrl('Garden'), // no specific asset → general fallback
   },
   {
     id: '8', dx: 1.8, dy: 1.8,
     userName: 'Sunny', emoji: '🌻',
     tags: [{ type: 'plant', label: 'Sunflower' }],
-    latestPost: { text: 'Sunflower is finally 2 metres tall!', timeAgo: '1d ago' },
+    latestPost: { text: 'Sunflower is finally 2 metres tall!', timeAgo: '1d ago', likeCount: 33 },
     illustrationUrl: getTileIllustrationUrl('Sunflower'),
   },
   {
@@ -77,7 +80,8 @@ export const DEMO_COMMUNITY_TILES: GardenTile[] = [
     userName: 'Spring Fair', emoji: '🎉',
     tags: [{ type: 'social', label: 'Event' }],
     isEvent: true, size: 1.4,
-    latestPost: { text: '2026 Spring Flower Fair — opens May 28', timeAgo: 'just now' },
+    illustrationUrl: getEventIllustrationUrl(),
+    latestPost: { text: '2026 Spring Flower Fair — opens May 28', timeAgo: 'just now', likeCount: 72 },
   },
 ]
 

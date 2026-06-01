@@ -3,7 +3,7 @@
 // Pure function: data in → positioned tiles out. No DB calls, no side effects.
 
 import type { GardenTile, RelationTag, StatusBubble } from '@/components/PublicGarden/types'
-import { getTileIllustrationUrl } from '@/lib/tileIllustrations'
+import { getTileIllustrationUrl, getEventIllustrationUrl } from '@/lib/tileIllustrations'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -25,6 +25,7 @@ export interface CommunityMember {
   latestPostImageUrl?: string
   latestPostCategory?: string | null   // 'help' | 'bloom' | 'growth' | null
   latestPostDate?: string              // ISO timestamp of the most recent published post
+  latestPostId?: string                // DB record id for the post link
   lastActiveAt?: string                // ISO timestamp of most recent daily_record
   potCreatedAt?: string                // ISO timestamp of earliest pot (for newPot bubble)
   isFollowedByMe: boolean
@@ -38,6 +39,7 @@ export interface CommunityEvent {
   relatedPlant: string        // which plant cluster to anchor near
   text?: string
   timeAgo?: string
+  illustrationUrl?: string    // optional override — defaults to getEventIllustrationUrl()
 }
 
 export interface LayoutConfig {
@@ -232,9 +234,10 @@ export function computeGardenLayout(
       statusBubble,
       latestPost: member.latestPostText
         ? {
-            text:     member.latestPostText,
-            timeAgo:  member.latestPostTimeAgo ?? '',
-            imageUrl: member.latestPostImageUrl,
+            text:          member.latestPostText,
+            timeAgo:       member.latestPostTimeAgo ?? '',
+            imageUrl:      member.latestPostImageUrl,
+            latestPostId:  member.latestPostId,
           }
         : undefined,
     }
@@ -274,6 +277,7 @@ export function computeGardenLayout(
       tags:     [{ type: 'social' as const, label: 'Event' }],
       isEvent:  true,
       size:     1.4,
+      illustrationUrl: event.illustrationUrl ?? getEventIllustrationUrl(),
       latestPost: event.text
         ? { text: event.text, timeAgo: event.timeAgo ?? '' }
         : undefined,
