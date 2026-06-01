@@ -33,17 +33,15 @@ export function useGardenTiles(
     })
   }, [])
 
-  // Preload myTile + first ring (dist < 4 in display coords) on mount
+  // Preload illustrations for all tiles on mount.
+  // We don't distance-filter here because outer tiles (events, far members) also
+  // need their images ready — the Spring Fair event tile at dist ≈ 4 was silently
+  // skipped by a dist < 4 cutoff and fell back to emoji.
   useEffect(() => {
     const allTiles = [myTile, ...tiles]
-    allTiles
-      .filter(t => {
-        const dist = Math.hypot(t.dx, t.dy)
-        return dist < 4
-      })
-      .forEach(t => {
-        if (t.illustrationUrl) preloadImage(t.illustrationUrl)
-      })
+    allTiles.forEach(t => {
+      if (t.illustrationUrl) preloadImage(t.illustrationUrl)
+    })
   }, [tiles, myTile, preloadImage])
 
   const getImage = useCallback((url: string): HTMLImageElement | null => {

@@ -20,23 +20,28 @@ const BASE = '/illustrations/tiles'
 // their less-specific parent (e.g. "rose") so they win the first-match race.
 //
 // Filenames with spaces are %-encoded so the browser loads them correctly.
-// Unmapped plants (cactus, fern, orchid, …) fall through to undefined → emoji fallback.
+// Unrecognised plants fall back to generalground.png (see getTileIllustrationUrl).
 const MAP: Record<string, string> = {
   'white rose': `${BASE}/whiteroseground.png`,
   rose:         `${BASE}/roseground.png`,
   pothos:       `${BASE}/Pothosground.png`,
-  succulent:    `${BASE}/Succulent1ground.png`,   // Succulent2ground.png available for a second variant
+  succulent:    `${BASE}/Succulent1ground.png`,   // Succulent2ground.png available as a second variant
   jasmine:      `${BASE}/jasmine%20ground.png`,
   mint:         `${BASE}/mintground.png`,
   sunflower:    `${BASE}/sunflower%20ground.png`,
+  cactus:       `${BASE}/cactusground.png`,
+  orchid:       `${BASE}/orchidground.png`,
   // Add future assets here, e.g.:
-  // cactus:    `${BASE}/cactusground.png`,
   // fern:      `${BASE}/fernground.png`,
-  // orchid:    `${BASE}/orchidground.png`,
   // basil:     `${BASE}/basilground.png`,
   // lavender:  `${BASE}/lavenderground.png`,
   // tomato:    `${BASE}/tomatoground.png`,
 }
+
+// Fallback illustration for plants that don't match any named entry.
+// Used when the user hasn't identified their plant or it doesn't fit a category.
+const GENERAL_GROUND = `${BASE}/generalground.png`
+const GENERAL_PURE   = `${BASE}/general.png`
 
 // ── Bubble / circular pot illustrations (plant only, no ground base) ─────────
 // Used in MyGarden pot circles.  Falls back to MAP variant if no pure asset.
@@ -45,50 +50,59 @@ const BUBBLE_MAP: Record<string, string> = {
   jasmine:   `${BASE}/jasminepure.png`,
   mint:      `${BASE}/mintpure.png`,
   sunflower: `${BASE}/sunflowerpure.png`,
+  cactus:    `${BASE}/cactuspure.png`,
   // Succulent pure variant: pure.png exists but filename is ambiguous — add when confirmed
 }
 
-// Special tile for the current user's home marker
-const ME_URL = `${BASE}/me.png`
+// Special tiles
+const ME_URL    = `${BASE}/metiler.png`
+const EVENT_URL = `${BASE}/eventpicnictier.png`
 
 // ── Exports ────────────────────────────────────────────────────────────────────
 
 /**
- * Returns the illustration PNG URL for a plant name, or `undefined` if no
- * asset exists yet.  Falls back to emoji rendering in the canvas.
+ * Returns the illustration PNG URL for a plant name.
+ * Falls back to the generic "general" ground tile for unrecognised plants
+ * (e.g. users who haven't identified their plant or use a non-standard name).
+ *
+ * Pass `allowGeneral = false` only when you explicitly want `undefined`
+ * instead of the fallback (e.g. to detect "no specific match" upstream).
  *
  * @param plantName  e.g. "Rose", "miniRose", "ROSE" — case-insensitive
  */
-export function getTileIllustrationUrl(plantName: string): string | undefined {
+export function getTileIllustrationUrl(
+  plantName: string,
+  allowGeneral = true,
+): string | undefined {
   const lower = plantName.toLowerCase()
   for (const [key, url] of Object.entries(MAP)) {
     if (lower.includes(key)) return url
   }
-  return undefined
+  return allowGeneral ? GENERAL_GROUND : undefined
 }
 
-/**
- * Returns the "me" tile illustration URL.
- * Returns `undefined` if `me.png` has not been added to the assets folder yet.
- */
-export function getMeIllustrationUrl(): string | undefined {
-  // Flip to `return ME_URL` once public/illustrations/tiles/me.png exists.
-  void ME_URL
-  return undefined
+/** Returns the "me" home-marker tile illustration URL. */
+export function getMeIllustrationUrl(): string {
+  return ME_URL
+}
+
+/** Returns the community-event tile illustration URL. */
+export function getEventIllustrationUrl(): string {
+  return EVENT_URL
 }
 
 /**
  * Returns the bubble/circle illustration URL for a plant name.
  * Prefers the no-ground "pure" variant (better for circular pots).
- * Falls back to the standard tile illustration, then `undefined`.
+ * Falls back to the standard tile illustration, then to general.png.
  *
  * @param plantName  e.g. "Rose", "miniRose" — case-insensitive
  */
-export function getBubbleIllustrationUrl(plantName: string): string | undefined {
+export function getBubbleIllustrationUrl(plantName: string): string {
   const lower = plantName.toLowerCase()
   for (const [key, url] of Object.entries(BUBBLE_MAP)) {
     if (lower.includes(key)) return url
   }
-  // Fall back to standard MAP if no dedicated bubble asset
-  return getTileIllustrationUrl(plantName)
+  // Try the ground-tile MAP next (no dedicated pure asset)
+  return getTileIllustrationUrl(plantName, false) ?? GENERAL_PURE
 }
