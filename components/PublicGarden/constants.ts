@@ -28,8 +28,8 @@ export const ALPHA_MIN = 0.2
 export const ALPHA_DECAY = 0.1      // per unit distance from origin
 
 // Bottom sheet
-export const SHEET_HEIGHT = 290     // px
-export const MAP_COMPRESSED_HEIGHT = 310  // px when sheet is open
+export const SHEET_HEIGHT = 360     // px — extra height for preview card
+export const MAP_COMPRESSED_HEIGHT = 220  // px — compresses more to fit
 
 // Isometric projection factors (x-axis, y-axis scaling)
 export const ISO_X_FACTOR = 0.5

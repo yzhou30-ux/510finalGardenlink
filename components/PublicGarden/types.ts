@@ -17,6 +17,10 @@ export interface LatestPost {
   imageUrl?: string
   text: string
   timeAgo: string
+  /** DB record id — enables "tap preview → /post/[id]" navigation. Absent for demo tiles. */
+  latestPostId?: string
+  /** Approximate like count displayed in the preview meta line. Absent = not shown. */
+  likeCount?: number
 }
 
 export interface GardenTile {
