@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { IconArrowRight, IconMessageCircle, IconHeart } from '@tabler/icons-react'
-import type { GardenTile, RelationTag } from './types'
+import type { GardenTile, RelationTag, LatestPost } from './types'
 import { SHEET_HEIGHT } from './constants'
 
 // ── Tag pill colours (same table used in GardenFeed + Visit Garden page) ──────
@@ -59,7 +59,7 @@ export function GardenBottomSheet({ tile, onVisitGarden, onMessage }: GardenBott
         <div style={{
           padding: '12px 16px 14px',
           fontFamily: 'var(--font-sans)',
-          height: 'calc(100% - 20px)',   /* 20px = handle (4px) + margins (8+8) */
+          height: 'calc(100% - 12px)',   /* 12px = top-margin (8px) + handle height (4px) */
           boxSizing: 'border-box',
           display: 'flex', flexDirection: 'column', gap: 10,
         }}>
@@ -143,15 +143,7 @@ export function GardenBottomSheet({ tile, onVisitGarden, onMessage }: GardenBott
 // Shown when tile.latestPost is present.
 // If latestPostId exists → wraps in a Link; otherwise renders plain div.
 
-interface PreviewPost {
-  imageUrl?: string
-  text: string
-  timeAgo: string
-  likeCount?: number
-  latestPostId?: string
-}
-
-function PreviewCard({ post, href }: { post: PreviewPost; href?: string }) {
+function PreviewCard({ post, href }: { post: LatestPost; href?: string }) {
   const cardStyle: React.CSSProperties = {
     borderRadius: 12,
     background: 'rgba(74,93,73,0.04)',
@@ -167,8 +159,7 @@ function PreviewCard({ post, href }: { post: PreviewPost; href?: string }) {
       {post.imageUrl && (
         <div style={{
           width: '100%',
-          aspectRatio: '16 / 10',
-          maxHeight: 140,
+          height: 140,
           overflow: 'hidden',
           background: 'var(--glass-sage-light)',
           lineHeight: 0,
