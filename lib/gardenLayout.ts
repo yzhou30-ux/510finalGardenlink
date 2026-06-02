@@ -244,8 +244,24 @@ export function computeGardenLayout(
   })
 
   // ── Position events near their relevant plant cluster ──────────────────────
+  //
+  // Each event is placed at the centroid of its related plant cluster, then
+  // nudged by two mechanisms to prevent stacking:
+  //
+  //   1. Vertical stagger: dy offset grows by 1.5 per event index so multiple
+  //      events anchored to the same cluster spread vertically rather than
+  //      landing on the exact same point.
+  //
+  //   2. Minimum-distance push: after placing each event we scan all already-
+  //      placed event tiles. If the Euclidean distance to any existing tile is
+  //      < MIN_EVENT_GAP we push the new tile outward along the separation
+  //      vector until the gap is satisfied.
 
-  const eventTiles: GardenTile[] = events.map(event => {
+  const MIN_EVENT_GAP = 2.0   // grid units — same coordinate space as dx/dy
+
+  const eventTiles: GardenTile[] = []
+
+  events.forEach((event, eventIndex) => {
     // Find which member tiles grow the event's related plant
     const cluster = memberTiles.filter((_, i) =>
       members[i].plants.some(
@@ -255,12 +271,14 @@ export function computeGardenLayout(
 
     let dx: number, dy: number
     if (cluster.length > 0) {
-      // Place near the cluster centroid with a stable offset
+      // Place near the cluster centroid with a stable horizontal offset.
+      // Vertical offset grows with eventIndex so same-cluster events stack
+      // downward (1.5 units apart) instead of piling on the same point.
       const avgDx  = cluster.reduce((s, t) => s + t.dx, 0) / cluster.length
       const avgDy  = cluster.reduce((s, t) => s + t.dy, 0) / cluster.length
       const offset = (stableHash(event.id) % 40 - 20) / 10
       dx = avgDx + offset
-      dy = avgDy + spread * 0.8
+      dy = avgDy + spread * 0.8 + eventIndex * 1.5
     } else {
       // No cluster — place in the outer ring at a stable angle
       const angle = (stableHash(event.id) % 628) / 100
@@ -268,7 +286,23 @@ export function computeGardenLayout(
       dy = MAX_DISTANCE * Math.sin(angle) * spread
     }
 
-    return {
+    // Minimum-distance push: iterate already-placed event tiles and push
+    // this one outward until no overlap remains.
+    for (const placed of eventTiles) {
+      const dist = Math.hypot(dx - placed.dx, dy - placed.dy)
+      if (dist < MIN_EVENT_GAP) {
+        // Push along the vector from the conflicting tile toward this one.
+        // If they're exactly coincident use a stable fallback direction.
+        const pushDist = dist > 0 ? dist : 0.001
+        const nx = (dx - placed.dx) / pushDist   // unit vector x
+        const ny = (dy - placed.dy) / pushDist   // unit vector y
+        const gap = MIN_EVENT_GAP - dist
+        dx += nx * gap
+        dy += ny * gap
+      }
+    }
+
+    eventTiles.push({
       id:       event.id,
       dx,
       dy,
@@ -281,7 +315,7 @@ export function computeGardenLayout(
       latestPost: event.text
         ? { text: event.text, timeAgo: event.timeAgo ?? '' }
         : undefined,
-    }
+    })
   })
 
   return { memberTiles, eventTiles }
